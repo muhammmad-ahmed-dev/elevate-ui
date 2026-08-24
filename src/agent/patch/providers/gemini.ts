@@ -21,13 +21,17 @@ import { logger } from "../../../utils/logger.js";
 export interface GeminiPatchProviderOptions {
   /** API key. Never logged. Read from env if not provided. */
   apiKey?: string;
-  /** Model name. Default: ELEVATE_PATCH_MODEL env var or "gemini-1.5-pro". */
+  /** Model name. Default: ELEVATE_PATCH_MODEL env var or "gemini-3.7-flash". */
   model?: string;
   /** Request timeout in ms. Default: 60 000. */
   timeoutMs?: number;
 }
 
-const DEFAULT_GEMINI_PATCH_MODEL = "gemini-1.5-pro";
+/**
+ * Default Gemini model. Configurable via ELEVATE_PATCH_MODEL env var.
+ * Using gemini-3.7-flash as the default production model.
+ */
+const DEFAULT_GEMINI_PATCH_MODEL = "gemini-3.7-flash";
 
 export class GeminiPatchProvider implements PatchProvider {
   public readonly name = "gemini";
@@ -73,8 +77,8 @@ export class GeminiPatchProvider implements PatchProvider {
 
     const promptText = buildPatchPrompt(request);
 
-    // API key is embedded in the URL query string — never in a header that might be logged
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent?key=${this.apiKey}`;
+    // API key is sent via x-goog-api-key header — never embedded in the URL
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${this.modelName}:generateContent`;
 
     const body = JSON.stringify({
       contents: [
@@ -97,7 +101,11 @@ export class GeminiPatchProvider implements PatchProvider {
       try {
         response = await fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            // API key via header — never in URL query string (would appear in server logs)
+            "x-goog-api-key": this.apiKey,
+          },
           body,
           signal: controller.signal,
         });

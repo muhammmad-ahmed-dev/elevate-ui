@@ -138,6 +138,10 @@ export class GitManager {
     };
   }
 
+  /**
+   * @deprecated DO NOT USE in Phase 3E+. This legacy method uses `git clean -fd`.
+   * Use `MutationTransactionRunner.rollback()` from `src/agent/patch/transaction/` instead.
+   */
   public async rollback(checkpoint: Checkpoint): Promise<RollbackResult> {
     try {
       logger.warn(`Triggering rollback to checkpoint ${checkpoint.id} (HEAD: ${checkpoint.headCommit})...`);

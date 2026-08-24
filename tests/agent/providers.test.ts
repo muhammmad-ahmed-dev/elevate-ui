@@ -313,14 +313,80 @@ describe("GeminiPatchProvider — HTTP errors", () => {
   });
 });
 
-describe("GeminiPatchProvider — API key NOT exposed in URL logging", () => {
-  it("provider name is 'gemini' (not exposing config details)", () => {
+describe("GeminiPatchProvider — API key NOT exposed in URL / sent via header", () => {
+  let originalFetch: typeof global.fetch;
+  let capturedUrl: string | undefined;
+  let capturedHeaders: Record<string, string> | undefined;
+
+  beforeEach(() => {
+    originalFetch = global.fetch;
+    capturedUrl = undefined;
+    capturedHeaders = undefined;
+
+    global.fetch = vi.fn().mockImplementation((url: string, init: any) => {
+      capturedUrl = url;
+      capturedHeaders = init?.headers ?? {};
+      // Return a valid response so the provider doesn't short-circuit
+      return Promise.resolve({
+        ok: true,
+        status: 200,
+        text: () => Promise.resolve(""),
+        json: () =>
+          Promise.resolve({
+            candidates: [{ content: { parts: [{ text: VALID_JSON_RESPONSE }] } }],
+          }),
+      } as any);
+    });
+  });
+
+  afterEach(() => {
+    global.fetch = originalFetch;
+  });
+
+  it("API key is NOT in the request URL", async () => {
     const p = new GeminiPatchProvider({ apiKey: "secret-gemini-key" });
-    expect(p.name).toBe("gemini");
-    // The API key should not be accessible from the public interface
-    expect((p as any).apiKey).toBe("secret-gemini-key"); // private but stored
-    // Ensure modelName doesn't contain the key
-    expect(p.modelName).not.toContain("secret-gemini-key");
+    await p.generatePatch(makeRequest());
+    expect(capturedUrl).toBeDefined();
+    expect(capturedUrl).not.toContain("secret-gemini-key");
+    expect(capturedUrl).not.toContain("key=");
+  });
+
+  it("API key IS sent via x-goog-api-key header", async () => {
+    const p = new GeminiPatchProvider({ apiKey: "secret-gemini-key" });
+    await p.generatePatch(makeRequest());
+    expect(capturedHeaders).toBeDefined();
+    expect(capturedHeaders!["x-goog-api-key"]).toBe("secret-gemini-key");
+  });
+
+  it("default model is gemini-3.7-flash when no env var or option provided", () => {
+    const origEnv = process.env.ELEVATE_PATCH_MODEL;
+    delete process.env.ELEVATE_PATCH_MODEL;
+    try {
+      const p = new GeminiPatchProvider({});
+      expect(p.modelName).toBe("gemini-3.7-flash");
+    } finally {
+      if (origEnv !== undefined) process.env.ELEVATE_PATCH_MODEL = origEnv;
+    }
+  });
+
+  it("model is overridable via ELEVATE_PATCH_MODEL env var", () => {
+    process.env.ELEVATE_PATCH_MODEL = "gemini-ultra";
+    try {
+      const p = new GeminiPatchProvider({});
+      expect(p.modelName).toBe("gemini-ultra");
+    } finally {
+      delete process.env.ELEVATE_PATCH_MODEL;
+    }
+  });
+
+  it("model is overridable via constructor option (highest precedence)", () => {
+    process.env.ELEVATE_PATCH_MODEL = "gemini-ultra";
+    try {
+      const p = new GeminiPatchProvider({ model: "gemini-custom" });
+      expect(p.modelName).toBe("gemini-custom");
+    } finally {
+      delete process.env.ELEVATE_PATCH_MODEL;
+    }
   });
 });
 
