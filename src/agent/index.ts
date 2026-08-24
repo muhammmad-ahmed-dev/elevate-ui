@@ -9,4 +9,5 @@ export * from "./protected-paths.js";
 export * from "./locator.js";
 export * from "./plan.js";
 export * from "./patch/index.js";
+export * from "./improve/index.js";
 

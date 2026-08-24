@@ -33,4 +33,20 @@ describe("Elevate CLI Scaffold", () => {
     expect(options).toContain("--typecheck-cmd");
     expect(options).toContain("--build-cmd");
   });
+
+  it("configures improve command with Phase 3F single-pass options", () => {
+    const program = createCli();
+    const improveCmd = program.commands.find((c) => c.name() === "improve");
+    expect(improveCmd).toBeDefined();
+
+    const options = improveCmd?.options.map((o) => o.long);
+    expect(options).toContain("--dry-run");
+    expect(options).toContain("--auto-approve");
+    expect(options).toContain("--vision-provider");
+    expect(options).toContain("--patch-provider");
+    expect(options).toContain("--max-files");
+    expect(options).toContain("--max-lines");
+    expect(options).toContain("--timeout");
+    expect(options).not.toContain("--max-passes"); // Deferred to Phase 3G
+  });
 });
