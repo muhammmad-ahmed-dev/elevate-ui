@@ -5,6 +5,7 @@ import { createImproveCommand } from "./commands/improve.js";
 import { createVerifyCommand } from "./commands/verify.js";
 import { createCompareCommand } from "./commands/compare.js";
 import { createReportCommand } from "./commands/report.js";
+import { createMcpCommand } from "./commands/mcp.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -19,6 +20,7 @@ export function createCli(): Command {
   program.addCommand(createVerifyCommand());
   program.addCommand(createCompareCommand());
   program.addCommand(createReportCommand());
+  program.addCommand(createMcpCommand());
 
   return program;
 }

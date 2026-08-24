@@ -13,6 +13,7 @@ describe("Elevate CLI Scaffold", () => {
     expect(commandNames).toContain("verify");
     expect(commandNames).toContain("compare");
     expect(commandNames).toContain("report");
+    expect(commandNames).toContain("mcp");
   });
 
   it("configures audit command with default targetUrl and options", () => {

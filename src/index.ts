@@ -6,4 +6,5 @@ export * from "./utils/config.js";
 export * from "./utils/logger.js";
 export * from "./cli/index.js";
 export * from "./reports/index.js";
+export * from "./mcp/index.js";
 

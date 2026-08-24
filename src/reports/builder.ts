@@ -20,9 +20,9 @@ import type {
 import type { VerificationGateResult } from "../agent/patch/verify/types.js";
 
 const SECRET_PATTERNS = [
-  /AIza[0-9A-Za-z-_]{35}/g,
-  /sk-ant-[0-9A-Za-z-_]{40,}/g,
-  /sk-[0-9A-Za-z-_]{30,}/g,
+  /AIza[0-9A-Za-z-_]{30,}/g,
+  /sk-ant-[0-9A-Za-z-_]{30,}/g,
+  /sk-[0-9A-Za-z-_]{20,}/g,
   /(?:api[_-]?key|secret|token|password|auth)['"]?\s*[:=]\s*['"]?([a-zA-Z0-9_\-.]{8,})['"]?/gi,
 ];
 
