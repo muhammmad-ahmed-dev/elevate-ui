@@ -100,6 +100,12 @@ export interface ImproveRunOptions {
   /** Mock scenario descriptor when patchProvider is "mock". */
   mockPatchScenario?: MockPatchScenario;
 
+  /** Custom patch text override for benchmark/mock testing. */
+  customPatch?: string;
+
+  /** Custom target files list for benchmark/mock testing. */
+  customTargetFiles?: string[];
+
   /** Maximum files allowed to touch in a single patch. Default: 2. */
   maxFiles?: number;
 

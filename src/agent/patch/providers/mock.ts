@@ -104,6 +104,14 @@ export const FIXTURE_FILE_DELETION_PATCH = `--- a/src/components/OldComponent.ts
 export interface MockPatchProviderOptions {
   scenario?: MockPatchScenario;
   /**
+   * Optional custom patch string override.
+   */
+  customPatch?: string;
+  /**
+   * Optional custom target files list.
+   */
+  customTargetFiles?: string[];
+  /**
    * Delay in milliseconds before resolving (simulate latency).
    * For "timeout" scenario, this exceeds any reasonable timeout.
    */
@@ -119,10 +127,14 @@ export class MockPatchProvider implements PatchProvider {
   public readonly modelName: string;
 
   private scenario: MockPatchScenario;
+  private customPatch?: string;
+  private customTargetFiles?: string[];
   private delayMs: number;
 
   constructor(options: MockPatchProviderOptions = {}) {
     this.scenario = options.scenario ?? "valid_single_file";
+    this.customPatch = options.customPatch;
+    this.customTargetFiles = options.customTargetFiles;
     this.delayMs = options.delayMs ?? 0;
     this.modelName = options.modelName ?? "mock-patch-model";
   }
@@ -138,6 +150,20 @@ export class MockPatchProvider implements PatchProvider {
     }
 
     const durationMs = Date.now() - start;
+
+    if (this.customPatch) {
+      const targetFiles = this.customTargetFiles || request.patchPlan.allowedFiles;
+      return this.makeSuccess(
+        request,
+        this.customPatch,
+        targetFiles,
+        "Applied benchmark target fix",
+        "Target component updated to fix visual/layout defect",
+        "low",
+        0.95,
+        durationMs
+      );
+    }
 
     switch (this.scenario) {
       case "valid_single_file":

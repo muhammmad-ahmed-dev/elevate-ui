@@ -44,6 +44,14 @@ export interface PatchProviderSelectorOptions {
    * Mock scenario (only used when provider is "mock").
    */
   mockScenario?: MockPatchScenario;
+  /**
+   * Custom patch text override for benchmark/mock testing.
+   */
+  customPatch?: string;
+  /**
+   * Custom target files list for benchmark/mock testing.
+   */
+  customTargetFiles?: string[];
 }
 
 /**
@@ -93,6 +101,8 @@ export function selectPatchProvider(
     case "mock":
       return new MockPatchProvider({
         scenario: options.mockScenario,
+        customPatch: options.customPatch,
+        customTargetFiles: options.customTargetFiles,
         modelName: modelName ?? "mock-patch-model",
       });
 

@@ -180,6 +180,8 @@ export class ImproveEngine {
         modelOverride: this.options.patchModel,
         timeoutMs: this.options.timeoutMs,
         mockScenario: this.options.mockPatchScenario,
+        customPatch: this.options.customPatch,
+        customTargetFiles: this.options.customTargetFiles,
       });
 
       const patchRequest: PatchGenerationRequest = {
