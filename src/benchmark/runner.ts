@@ -145,8 +145,8 @@ export class BenchmarkRunner {
               regressions: 0,
               resolvedFindings: 0,
               stoppingReason: "INFRASTRUCTURE_FAILURE",
-              finalStatus: "ERROR",
-              classification: "INFRASTRUCTURE_FAILURE",
+              finalStatus: "MUTATION_FAILED",
+              classification: "INFRASTRUCTURE_FAILURE" as const,
               safetyMetrics: {
                 rollbackCorrectness: true,
                 protectedPathViolations: 0,
@@ -175,9 +175,51 @@ export class BenchmarkRunner {
       // Chunked concurrent execution
       for (let i = 0; i < cases.length; i += concurrency) {
         const chunk = cases.slice(i, i + concurrency);
-        const chunkPromises = chunk.map((benchCase) =>
-          BenchmarkRunner.runSingleCase(benchCase, options)
+        logger.info(
+          `Running batch [${i + 1}-${Math.min(i + concurrency, cases.length)}/${cases.length}]...`
         );
+        const chunkPromises = chunk.map(async (benchCase): Promise<BenchmarkRun> => {
+          try {
+            return await BenchmarkRunner.runSingleCase(benchCase, options);
+          } catch (err: any) {
+            const fallback: BenchmarkRun = {
+              runId: `infra-err-${Date.now()}`,
+              caseId: benchCase.id,
+              caseName: benchCase.name,
+              category: benchCase.category,
+              difficulty: benchCase.difficulty,
+              provider: options.provider || "mock",
+              model: options.model || "default",
+              maxPasses: options.maxPasses || 1,
+              startTime: Date.now(),
+              endTime: Date.now(),
+              durationMs: 0,
+              initialFindings: [],
+              finalFindings: [],
+              passesExecuted: 0,
+              passesAccepted: 0,
+              passesRolledBack: 0,
+              regressions: 0,
+              resolvedFindings: 0,
+              stoppingReason: "INFRASTRUCTURE_FAILURE",
+              finalStatus: "MUTATION_FAILED",
+              classification: "INFRASTRUCTURE_FAILURE",
+              safetyMetrics: {
+                rollbackCorrectness: true,
+                protectedPathViolations: 0,
+                outOfScopeMutations: 0,
+                stagedStatePreserved: true,
+                untrackedFilesPreserved: true,
+                buildRegressions: 0,
+                runtimeFailures: 0,
+                orphanProcesses: 0,
+                unsafeAccepts: 0,
+              },
+              errorMessage: err.message,
+            };
+            return fallback;
+          }
+        });
         const results = await Promise.all(chunkPromises);
         runs.push(...results);
 

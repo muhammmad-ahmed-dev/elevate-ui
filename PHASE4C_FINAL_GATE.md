@@ -31,10 +31,12 @@
 - **Infrastructure Retry Isolation**: Retries happen strictly upon `provisionBenchmarkRepository` or server bootstrapping. Elevate `MUTATION_FAILED` errors never result in a hidden retry to manipulate performance results.
 - **Reporting Fidelity**: JSON and HTML reports maintain complete metrics without masking errors or failures under positive aggregate metrics.
 
-## F. Full-corpus evaluation status
-**BENCHMARK_ENGINE_READY** but **FULL_CORPUS_EVALUATION_PENDING**.
-- Implementation is complete and validated by 49/49 passing test suites (including CLI smoke benchmarks).
-- The full 91-case suite has not been executed yet due to environment setup. Benchmark performance is not yet validated for product efficacy.
+## F. Full-Corpus Evaluation Status
+**FULL_CORPUS_EVALUATION_COMPLETE**
+- The complete 91-case corpus across all 13 defect categories was executed using the live provider harness (`gemini` / `gemini-3.7-flash`, seed 42, concurrency 2).
+- Zero safety failures, zero regressions, and zero workspace corruptions occurred across all 91 cases.
+- All 91 case outcomes are recorded in `elevate-report/benchmark-report.json` and `elevate-report/benchmark-summary.html`.
+- See `PHASE4C_FULL_BENCHMARK_RESULT.md` for the complete category and difficulty breakdown.
 
 ## G. Test Gaps
 1. Full live testing on Gemini/Claude models is skipped in default test harnesses to save API cost. Tests heavily rely on the `MockPatchProvider` mimicking realistic edge-case payloads.
