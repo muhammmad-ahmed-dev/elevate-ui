@@ -1,8 +1,9 @@
 /**
- * Phase 4C: Benchmark Fixture Generator
+ * Phase 4C.5: Hardened Benchmark Fixture Generator
  *
- * Programmatically generates deterministic React/Tailwind component code
- * and corresponding fix patches for all 13 benchmark defect categories.
+ * Programmatically generates deterministic, realistic React/Tailwind component code
+ * and corresponding fix patches across all 13 benchmark defect categories with
+ * real, observable multi-viewport layout and visual behaviors.
  */
 
 import type { BenchmarkCategory, BenchmarkDifficulty } from "../types.js";
@@ -48,7 +49,7 @@ export function generateFixtureTemplate(
         difficulty,
         componentPath: `src/components/${compName}.tsx`,
         expectedIssueTypes: ["touch-target", "mobile-usability"],
-        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <nav className="p-2">\n      <button className="h-6 w-6 text-xs bg-slate-100 rounded">\n        X\n      </button>\n    </nav>\n  );\n}\n`,
+        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <nav className="p-2">\n      <button className="h-6 w-6 text-xs bg-slate-100 rounded flex items-center justify-center">\n        X\n      </button>\n    </nav>\n  );\n}\n`,
         fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <nav className="p-2">\n      <button className="min-h-[44px] min-w-[44px] text-sm bg-slate-100 rounded flex items-center justify-center">\n        X\n      </button>\n    </nav>\n  );\n}\n`,
         description: "Interactive button target is smaller than 44x44px mobile touch target guideline.",
         targetSelector: "button",
@@ -75,25 +76,25 @@ export function generateFixtureTemplate(
         category,
         difficulty,
         componentPath: `src/components/${compName}.tsx`,
-        expectedIssueTypes: ["typography", "readability"],
-        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-4">\n      <p className="text-[9px] leading-tight text-slate-600">\n        Terms and conditions apply. Please read the full documentation before proceeding.\n      </p>\n    </div>\n  );\n}\n`,
-        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-4">\n      <p className="text-sm leading-relaxed text-slate-700">\n        Terms and conditions apply. Please read the full documentation before proceeding.\n      </p>\n    </div>\n  );\n}\n`,
-        description: "Body copy font size is under minimum readable threshold (9px).",
+        expectedIssueTypes: ["typography", "readability", "color-contrast"],
+        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-4 bg-white">\n      <p className="text-[9px] text-gray-400">\n        Terms and conditions apply. Please read full documentation before proceeding.\n      </p>\n    </div>\n  );\n}\n`,
+        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-4 bg-white">\n      <p className="text-sm text-slate-700 font-medium">\n        Terms and conditions apply. Please read full documentation before proceeding.\n      </p>\n    </div>\n  );\n}\n`,
+        description: "Body copy font size is under readable threshold (9px) with low contrast text.",
         targetSelector: "p",
       };
     }
 
     case "spacing": {
       return {
-        name: `Spacing & Padding Balance ${index}`,
+        name: `Spacing & Touch Padding Balance ${index}`,
         category,
         difficulty,
         componentPath: `src/components/${compName}.tsx`,
-        expectedIssueTypes: ["spacing", "visual-hierarchy"],
-        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-0 border rounded">\n      <h3 className="font-bold mb-0">Cramped Header</h3>\n      <p className="mt-0">Text jammed directly against border without padding.</p>\n    </div>\n  );\n}\n`,
-        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-6 border rounded shadow-sm">\n      <h3 className="font-bold mb-2">Cramped Header</h3>\n      <p className="text-slate-600">Text jammed directly against border without padding.</p>\n    </div>\n  );\n}\n`,
-        description: "Component has zero inner padding causing text collision with border boundaries.",
-        targetSelector: "div",
+        expectedIssueTypes: ["spacing", "touch-target"],
+        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-0 border rounded">\n      <button className="h-6 w-6 p-0 text-xs bg-slate-100">\n        Action\n      </button>\n    </div>\n  );\n}\n`,
+        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="p-6 border rounded shadow-sm">\n      <button className="min-h-[44px] min-w-[44px] p-3 text-sm bg-blue-600 text-white rounded">\n        Action\n      </button>\n    </div>\n  );\n}\n`,
+        description: "Component has zero inner padding with undersized target button.",
+        targetSelector: "button",
       };
     }
 
@@ -104,8 +105,8 @@ export function generateFixtureTemplate(
         difficulty,
         componentPath: `src/components/${compName}.tsx`,
         expectedIssueTypes: ["heading-hierarchy", "accessibility"],
-        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <section className="p-4">\n      <h1 className="text-2xl font-bold">Main Title</h1>\n      <h5 className="text-lg font-semibold mt-4">Skipped Levels Subsection</h5>\n    </section>\n  );\n}\n`,
-        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <section className="p-4">\n      <h1 className="text-2xl font-bold">Main Title</h1>\n      <h2 className="text-lg font-semibold mt-4">Skipped Levels Subsection</h2>\n    </section>\n  );\n}\n`,
+        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <section className="p-4 bg-white">\n      <h1 className="text-2xl font-bold">Main Title</h1>\n      <h5 className="text-lg font-semibold mt-4">Skipped Levels Subsection</h5>\n    </section>\n  );\n}\n`,
+        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <section className="p-4 bg-white">\n      <h1 className="text-2xl font-bold">Main Title</h1>\n      <h2 className="text-lg font-semibold mt-4">Skipped Levels Subsection</h2>\n    </section>\n  );\n}\n`,
         description: "Heading level skips directly from h1 to h5 breaking document outline.",
         targetSelector: "h5",
       };
@@ -131,11 +132,11 @@ export function generateFixtureTemplate(
         category,
         difficulty,
         componentPath: `src/components/${compName}.tsx`,
-        expectedIssueTypes: ["cta-hierarchy", "visual-priority"],
-        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="flex gap-4 p-4">\n      <button className="bg-blue-600 text-white px-4 py-2 rounded">Sign Up</button>\n      <button className="bg-blue-600 text-white px-4 py-2 rounded">Cancel</button>\n    </div>\n  );\n}\n`,
-        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="flex gap-4 p-4">\n      <button className="bg-blue-600 text-white px-4 py-2 rounded font-semibold">Sign Up</button>\n      <button className="bg-transparent text-slate-700 border border-slate-300 px-4 py-2 rounded">Cancel</button>\n    </div>\n  );\n}\n`,
-        description: "Primary and secondary buttons share identical prominent styling.",
-        targetSelector: "button:last-child",
+        expectedIssueTypes: ["cta-hierarchy", "touch-target"],
+        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="flex gap-4 p-4">\n      <button className="h-6 w-6 text-xs bg-gray-200 text-gray-400 rounded">Sign Up</button>\n      <button className="h-6 w-6 text-xs bg-gray-200 text-gray-400 rounded">Cancel</button>\n    </div>\n  );\n}\n`,
+        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="flex gap-4 p-4">\n      <button className="min-h-[44px] min-w-[44px] px-4 py-2 bg-blue-600 text-white rounded font-semibold">Sign Up</button>\n      <button className="min-h-[44px] min-w-[44px] px-4 py-2 bg-transparent text-slate-700 border border-slate-300 rounded">Cancel</button>\n    </div>\n  );\n}\n`,
+        description: "CTA buttons have undersized targets and low visual contrast.",
+        targetSelector: "button:first-child",
       };
     }
 
@@ -150,11 +151,11 @@ export function generateFixtureTemplate(
         category,
         difficulty,
         componentPath: `src/components/${compName}.tsx`,
-        expectedIssueTypes: [category, "layout"],
-        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="flex flex-row p-6 gap-6">\n      <div className="w-1/2 bg-slate-100 p-4">Left Pane</div>\n      <div className="w-1/2 bg-slate-200 p-4">Right Pane</div>\n    </div>\n  );\n}\n`,
-        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="flex flex-col md:flex-row p-6 gap-6">\n      <div className="w-full md:w-1/2 bg-slate-100 p-4 rounded">Left Pane</div>\n      <div className="w-full md:w-1/2 bg-slate-200 p-4 rounded">Right Pane</div>\n    </div>\n  );\n}\n`,
-        description: `Multi-column layout fails to wrap on smaller viewports for category ${category}.`,
-        targetSelector: "div.flex",
+        expectedIssueTypes: [category, "overflow"],
+        initialCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="w-[550px] p-6 bg-slate-50 flex flex-row gap-6">\n      <div className="w-1/2 bg-slate-100 p-4">Left Column</div>\n      <div className="w-1/2 bg-slate-200 p-4">Right Column</div>\n    </div>\n  );\n}\n`,
+        fixedCode: `import React from 'react';\n\nexport function ${compName}() {\n  return (\n    <div className="w-full max-w-[550px] p-6 bg-slate-50 flex flex-col md:flex-row gap-6">\n      <div className="w-full md:w-1/2 bg-slate-100 p-4 rounded">Left Column</div>\n      <div className="w-full md:w-1/2 bg-slate-200 p-4 rounded">Right Column</div>\n    </div>\n  );\n}\n`,
+        description: `Fixed width (550px) container creates horizontal overflow on 375px mobile viewport for ${category}.`,
+        targetSelector: "div.w-\\[550px\\]",
       };
     }
   }
