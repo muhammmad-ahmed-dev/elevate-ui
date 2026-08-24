@@ -3,38 +3,50 @@
 **Phase:** Phase 4C (Benchmark + Automated Evaluation Framework)
 **Auditor:** Senior Architect
 **Date:** 2026-08-25
-**Status:** READY_FOR_PHASE_4D
 
 ---
 
 ## A. Confirmed PASS
-1. **Reproducible 80+ Case Benchmark Corpus**: The benchmark catalogue contains 91 structured cases spanning all 13 required visual and layout defect categories across easy, medium, and hard difficulty tiers.
-2. **Disposable Repository Isolation (PASS)**: `provisionBenchmarkRepository` guarantees each case executes in an isolated temporary Git repository. The Elevate development workspace is never modified during benchmark execution.
-3. **Dedicated Preview Server Isolation (PASS)**: `startBenchmarkFixtureServer` spins up a dedicated preview server on a dynamic local port per case, guaranteeing zero port conflicts or cross-test contamination.
-4. **Safety & Invariant Tracking (PASS)**: The evaluator tracks rollback correctness, protected path violations, out-of-scope mutations, and unsafe accepts (`unsafeAcceptCount === 0`).
-5. **No Automatic Mutation Retries (PASS)**: Infrastructure retries are strictly restricted to temporary provisioning or port allocation failures; mutation logic is never retried automatically.
-6. **Self-Contained Reporting**: Generates both standalone HTML summaries (`benchmark-summary.html`) and machine-readable JSON (`benchmark-report.json`) with full reproducibility metadata (seed, git commit, node version, timestamp).
-7. **Complete Repository Validation**: All 49 test files and 407 tests pass (100%), with clean `typecheck`, `lint`, and `build`.
+1. **Isolated Infrastructure**: Fixture server (`src/benchmark/fixtures/provisioner.ts`) isolates temp git repositories and allocates dynamic local HTTP ports independently for each case execution. Cases cannot share files, git state, processes, ports, or memory.
+2. **Deterministic Orchestration**: Fixture generators (`src/benchmark/fixtures/generator.ts`) deterministically recreate component defects matching 13 precise categories, without leaking answers or patch assumptions to the agent.
+3. **Safety Monitoring Integration**: Unsafe accepts, out-of-scope modifications, protected-path violations, and rollback behaviors are tracked securely.
+4. **Benchmark Classification Engine**: Infrastructure failures are cleanly distinguished from product failures; non-actionable cases do not inflate convergence metrics.
+5. **Provider Support**: Mock, Claude, and Gemini providers are interchangeably configurable.
+6. **Concurrent Runner Stability**: The runner supports concurrency scaling while strictly persisting artifact separation and tracking child process/port termination safely upon case completion.
 
 ## B. Critical Blockers
 *(None)*
 
 ## C. Non-blocking Risks
-1. **Preview Server CSS Fidelity**: The built-in fixture preview server includes a core utility stylesheet for deterministic rule evaluation; complex multi-component Tailwind plugins in custom cases require full Next.js build compilation.
-2. **Execution Latency at Scale**: Running all 91 cases sequentially with multi-viewport Playwright captures takes ~5–8 minutes. Bounded concurrency (`--concurrency 4`) mitigates this for large CI runs.
+1. **Full-scale execution latency**: While smoke tests execute rapidly, executing 91 fixtures synchronously with multi-viewport Playwright evaluation imposes high benchmark latency. CI orchestration will require concurrency tuning (`--concurrency`).
+2. **Tailwind compilation in fixture mode**: `startBenchmarkFixtureServer` provides a minimal HTML wrapper but lacks a full static extraction step (like Next.js build), which may artificially suppress complex CSS utility cascades in advanced fixtures compared to a real Next.js application.
 
-## D. Security & Privacy Findings
-1. **Zero Secret Leakage (PASS)**: The benchmark reporter reuses Phase 4A secret stripping utilities, ensuring API tokens and private paths are never logged to benchmark artifacts.
-2. **Deterministic Seed Anchoring (PASS)**: Every benchmark run embeds the exact random seed, platform info, and commit SHA in its reproducibility envelope.
+## D. Benchmark Validity Findings
+- **Baseline Issue Realism**: Cases accurately mirror real accessibility (touch target minimums, contrast ratios), layout (horizontal scrolling), and typography bounds.
+- **Observability**: The Playwright capture and axe-core deterministic evaluations fully cover the scope of these defects on multi-viewport setups.
+- **Strict Separation**: The expected output (`fixedCode`) is sequestered and entirely invisible to the underlying agent prompt engine.
 
-## E. Test Gaps
-1. Live network-dependent LLM benchmark tests (Gemini/Claude real API calls) are disabled by default to avoid CI costs; mock provider tests cover 100% of the orchestration logic.
+## E. Safety Findings
+- **Unsafe Accepts**: Explicitly monitored by the `BenchmarkEvaluator`. Any transaction accepted with `unsafeAccepts > 0` immediately converts the case classification to `SAFETY_FAILURE`.
+- **Infrastructure Retry Isolation**: Retries happen strictly upon `provisionBenchmarkRepository` or server bootstrapping. Elevate `MUTATION_FAILED` errors never result in a hidden retry to manipulate performance results.
+- **Reporting Fidelity**: JSON and HTML reports maintain complete metrics without masking errors or failures under positive aggregate metrics.
 
-## F. Phase 4D Prerequisites
-1. Final end-to-end integration and readiness validation.
+## F. Full-corpus evaluation status
+**BENCHMARK_ENGINE_READY** but **FULL_CORPUS_EVALUATION_PENDING**.
+- Implementation is complete and validated by 49/49 passing test suites (including CLI smoke benchmarks).
+- The full 91-case suite has not been executed yet due to environment setup. Benchmark performance is not yet validated for product efficacy.
+
+## G. Test Gaps
+1. Full live testing on Gemini/Claude models is skipped in default test harnesses to save API cost. Tests heavily rely on the `MockPatchProvider` mimicking realistic edge-case payloads.
+2. Port collision fuzz-testing for the `FixtureServerInstance` on high-concurrency OS limits (e.g. `ulimit` file descriptor caps during Playwright spawns) is unrepresented in unit tests.
+
+## H. Phase 4D Prerequisites
+- The full 91-case suite must be executed prior to or during Phase 4D against live Gemini and Claude API providers to establish the actual product performance baseline.
+- Real API costs must be modeled using the generated `benchmark-report.json` outputs before rolling out to production.
+- Benchmark output schemas and reporting artifacts are fully locked and ready for Phase 4D integration pipelines.
 
 ---
 
-## G. Final Status
+## I. Final Status
 
 **READY_FOR_PHASE_4D**
