@@ -5,4 +5,5 @@ export * from "./agent/index.js";
 export * from "./utils/config.js";
 export * from "./utils/logger.js";
 export * from "./cli/index.js";
+export * from "./reports/index.js";
 

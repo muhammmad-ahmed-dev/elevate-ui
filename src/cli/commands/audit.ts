@@ -17,6 +17,8 @@ export interface AuditCommandOptions {
   visionProvider?: string;
   visionModel?: string;
   skipVision?: boolean;
+  report?: boolean;
+  reportDir?: string;
 }
 
 export async function runAuditPipeline(
@@ -91,6 +93,8 @@ export function createAuditCommand(): Command {
     .option("--vision-provider <provider>", "Vision provider (gemini, claude, mock)")
     .option("--vision-model <model>", "Vision model name")
     .option("--skip-vision", "Skip multimodal vision evaluation (run deterministic checks only)")
+    .option("--report", "Automatically generate HTML and JSON report", false)
+    .option("--report-dir <dir>", "Directory for report output", "./elevate-report")
     .action(async (url: string, options: AuditCommandOptions) => {
       logger.title("ELEVATE: AUDIT & SYNTHESIS PASS");
 
@@ -144,6 +148,11 @@ export function createAuditCommand(): Command {
         }
 
         console.log(`\nAudit completed in ${result.runMetadata.durationMs}ms.\n`);
+
+        if (options.report) {
+          const { generateReport } = await import("../../reports/index.js");
+          await generateReport(result, { outputDir: options.reportDir });
+        }
       } catch (err: any) {
         logger.error(`Audit failed: ${err.message}`);
         process.exitCode = 1;

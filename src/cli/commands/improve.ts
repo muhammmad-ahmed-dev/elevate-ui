@@ -22,7 +22,8 @@ export interface ImproveCliOptions {
   typecheckCmd?: string;
   buildCmd?: string;
   screenshotsDir?: string;
-  serverAlreadyRunning?: boolean;
+  report?: boolean;
+  reportDir?: string;
 }
 
 export function createImproveCommand(): Command {
@@ -44,6 +45,8 @@ export function createImproveCommand(): Command {
     .option("--typecheck-cmd <cmd>", "Command to run typechecking verification")
     .option("--build-cmd <cmd>", "Command to run build verification")
     .option("-s, --screenshots-dir <dir>", "Directory to save captured screenshots", "./elevate-report/screenshots")
+    .option("--report", "Automatically generate HTML and JSON report", false)
+    .option("--report-dir <dir>", "Directory for report output", "./elevate-report")
     .action(async (url: string, options: ImproveCliOptions) => {
       const projectRoot = process.cwd();
 
@@ -105,6 +108,11 @@ export function createImproveCommand(): Command {
           for (const line of result.recoveryInstructions) {
             console.log(`  ${line}`);
           }
+        }
+
+        if (options.report) {
+          const { generateReport } = await import("../../reports/index.js");
+          await generateReport(result, { outputDir: options.reportDir });
         }
 
         if (result.finalStatus !== "SUCCESS" && result.finalStatus !== "DRY_RUN") {

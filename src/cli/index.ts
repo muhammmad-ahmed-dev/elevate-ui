@@ -4,6 +4,7 @@ import { createAuditCommand } from "./commands/audit.js";
 import { createImproveCommand } from "./commands/improve.js";
 import { createVerifyCommand } from "./commands/verify.js";
 import { createCompareCommand } from "./commands/compare.js";
+import { createReportCommand } from "./commands/report.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -17,6 +18,7 @@ export function createCli(): Command {
   program.addCommand(createImproveCommand());
   program.addCommand(createVerifyCommand());
   program.addCommand(createCompareCommand());
+  program.addCommand(createReportCommand());
 
   return program;
 }
