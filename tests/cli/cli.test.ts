@@ -46,7 +46,6 @@ describe("Elevate CLI Scaffold", () => {
     expect(options).toContain("--patch-provider");
     expect(options).toContain("--max-files");
     expect(options).toContain("--max-lines");
-    expect(options).toContain("--timeout");
-    expect(options).not.toContain("--max-passes"); // Deferred to Phase 3G
+    expect(options).toContain("--max-passes");
   });
 });

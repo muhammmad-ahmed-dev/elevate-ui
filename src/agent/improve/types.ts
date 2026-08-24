@@ -1,8 +1,8 @@
 /**
- * Phase 3F: Single-Pass elevate-ui improve — Type Definitions
+ * Phase 3F & 3G: elevate-ui improve — Type Definitions
  *
  * Defines the request options, status codes, progress callbacks, and structured
- * result model for the single-pass improvement engine.
+ * result models for both single-pass and bounded multi-pass improvement engines.
  */
 
 import type { Finding, MutationRecommendation } from "../../analysis/types.js";
@@ -45,6 +45,8 @@ export type ImproveRunStatus =
 // ---------------------------------------------------------------------------
 
 export interface ApprovalPromptDetails {
+  passNumber?: number;
+  totalPasses?: number;
   recommendation: MutationRecommendation;
   locatorResult: ComponentLocatorResult;
   patchPlan: PatchPlan;
@@ -57,7 +59,7 @@ export type ApprovalPromptFunction = (
 ) => Promise<boolean>;
 
 // ---------------------------------------------------------------------------
-// Engine Options
+// Single-Pass Engine Options
 // ---------------------------------------------------------------------------
 
 export interface ImproveRunOptions {
@@ -74,7 +76,7 @@ export interface ImproveRunOptions {
   dryRun?: boolean;
 
   /**
-   * If true, bypasses interactive human approval for autonomous single-pass execution.
+   * If true, bypasses interactive human approval for autonomous execution.
    * Safety gates (AST, protected paths, build, typecheck, verify) remain strictly enforced.
    * Default: false.
    */
@@ -133,7 +135,7 @@ export interface ImproveRunOptions {
 }
 
 // ---------------------------------------------------------------------------
-// Result Model
+// Single-Pass Result Model
 // ---------------------------------------------------------------------------
 
 export interface ImproveRunResult {
@@ -192,5 +194,111 @@ export interface ImproveRunResult {
   error?: string;
 
   /** Recovery instructions if transaction rollback failed critically. */
+  recoveryInstructions?: string[];
+}
+
+// ---------------------------------------------------------------------------
+// Phase 3G: Multi-Pass Models & Types
+// ---------------------------------------------------------------------------
+
+export type MultiPassStoppingReason =
+  | "MAX_PASSES_REACHED"           // Budget of passes reached
+  | "NO_ACTIONABLE_IMPROVEMENTS"    // No viable unattempted recommendations remain
+  | "REPEATED_RECOMMENDATION"       // Analyzer proposed duplicate recommendation/fingerprint
+  | "NO_NET_NEW_PROGRESS"          // Accepted pass failed to demonstrate measurable improvement
+  | "ROLLBACK"                     // Pass rolled back (MVP stopping policy)
+  | "USER_CANCELLED"               // User aborted interactive prompt
+  | "SAFETY_ERROR"                 // Critical safety error (e.g. rollback failed or crash)
+  | "BLOCKED"                      // Patch planner or policy blocked execution
+  | "DRY_RUN_COMPLETED";           // Dry run simulation finished without mutation
+
+export type RecommendationStatus =
+  | "AVAILABLE"
+  | "ATTEMPTED"
+  | "ACCEPTED"
+  | "ROLLED_BACK"
+  | "REJECTED"
+  | "SKIPPED"
+  | "SUPERSEDED";
+
+export interface RecommendationHistoryItem {
+  recommendationId: string;
+  fingerprint: string;
+  problem: string;
+  proposedImprovement: string;
+  affectedSelector?: string;
+  affectedComponents?: string[];
+  sourceFindingIds: string[];
+  passNumber: number;
+  status: RecommendationStatus;
+  reasonSkippedOrRejected?: string;
+  transactionId?: string;
+  decision?: VerificationDecision;
+}
+
+export interface ProgressResult {
+  improved: boolean;
+  regressions: number;
+  resolved: number;
+  remaining: number;
+  reason: string;
+}
+
+export interface ImprovePassResult {
+  passNumber: number;
+  runId: string;
+  recommendation: MutationRecommendation;
+  locatorResult?: ComponentLocatorResult;
+  patchPlan?: PatchPlan;
+  patchResult?: PatchGenerationResult;
+  validationResult?: ValidatedPatch;
+  approvalResult?: {
+    approved: boolean;
+    reason?: string;
+  };
+  transaction?: MutationTransaction;
+  transactionResult?: MutationTransactionResult;
+  verificationResult?: VerificationPipelineResult;
+  decision?: VerificationDecision;
+  status: ImproveRunStatus;
+  targetedImprovement: boolean;
+  newRegressions: number;
+  progress?: ProgressResult;
+  durationMs: number;
+  summary: string;
+  error?: string;
+}
+
+export interface MultiPassImproveOptions extends ImproveRunOptions {
+  /** Maximum number of passes to execute (1-10). Default: 1. */
+  maxPasses?: number;
+
+  /** Maximum safety ceiling for allowed passes. Default: 10. */
+  maxAllowedPasses?: number;
+
+  /** Global run timeout across all passes in ms. Default: 300000 (5 mins). */
+  globalTimeoutMs?: number;
+
+  /** Minimum recommendation confidence to attempt (0.0–1.0). Default: 0.5. */
+  minConfidence?: number;
+}
+
+export interface MultiPassImproveResult {
+  runId: string;
+  targetUrl: string;
+  maxPasses: number;
+  passesExecuted: number;
+  passesAccepted: number;
+  passesRolledBack: number;
+  recommendationsConsidered: number;
+  recommendationsSkipped: number;
+  stoppingReason: MultiPassStoppingReason;
+  baselineFindings: Finding[];
+  finalFindings: Finding[];
+  passResults: ImprovePassResult[];
+  recommendationHistory: RecommendationHistoryItem[];
+  finalStatus: ImproveRunStatus;
+  durationMs: number;
+  summary: string;
   recoveryInstructions?: string[];
 }
