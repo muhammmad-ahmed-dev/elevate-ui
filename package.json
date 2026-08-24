@@ -1,0 +1,44 @@
+{
+  "name": "elevate-ui",
+  "version": "0.1.0",
+  "description": "Closed-Loop Web Design Refinement Engine for AI Coding Agents",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "elevate": "dist/cli/index.js",
+    "elevate-ui": "dist/cli/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "nextjs",
+    "tailwind",
+    "design",
+    "devtools",
+    "playwright",
+    "visual-regression",
+    "mcp"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "commander": "^12.1.0",
+    "picocolors": "^1.1.0",
+    "playwright": "^1.49.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.16.0",
+    "@types/node": "^22.10.0",
+    "eslint": "^9.16.0",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.16.0",
+    "vitest": "^2.1.8"
+  }
+}
