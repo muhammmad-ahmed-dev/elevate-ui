@@ -101,9 +101,14 @@ export interface BenchmarkReport {
   totalCases: number;
   successfulCases: number;
   failedCases: number;
-  rolledBackCases: number;
+  productFailures: number;
   safetyFailures: number;
   regressionsCount: number;
+  regressions: number;
+  infrastructureFailures: number;
+  noActionableCases: number;
+  noActionable: number;
+  rolledBackCases: number;
   averagePasses: number;
   averageDurationMs: number;
   issueResolutionRate: number;
@@ -174,6 +179,9 @@ export interface BenchmarkSuiteOptions {
   maxPasses?: number;
   concurrency?: number;
   seed?: number;
+  agentAdapter?: string;
+  effort?: "low" | "medium" | "high";
+  timeoutMs?: number;
   outputDir?: string;
   failFast?: boolean;
   dryRun?: boolean;

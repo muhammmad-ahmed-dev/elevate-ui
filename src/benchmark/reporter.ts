@@ -129,11 +129,18 @@ export function renderBenchmarkHtmlReport(report: BenchmarkReport): string {
         <div class="kpi-subtext">${report.successfulCases} / ${report.totalCases} cases passed</div>
       </div>
       <div class="kpi-card">
-        <div class="kpi-label">Regression Rate</div>
-        <div class="kpi-value" style="color: ${report.regressionRate === 0 ? successColor : failColor};">
-          ${Math.round(report.regressionRate * 100)}%
+        <div class="kpi-label">Failures Breakdown</div>
+        <div class="kpi-value" style="color: ${report.productFailures + report.infrastructureFailures === 0 ? successColor : failColor};">
+          ${report.productFailures + report.infrastructureFailures}
         </div>
-        <div class="kpi-subtext">${report.regressionsCount} regressions observed</div>
+        <div class="kpi-subtext">Product: ${report.productFailures} | Infra: ${report.infrastructureFailures} | Clean: ${report.noActionable}</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Regressions</div>
+        <div class="kpi-value" style="color: ${report.regressions === 0 ? successColor : failColor};">
+          ${report.regressions}
+        </div>
+        <div class="kpi-subtext">Regression rate: ${Math.round(report.regressionRate * 100)}%</div>
       </div>
       <div class="kpi-card">
         <div class="kpi-label">Safety Failures</div>

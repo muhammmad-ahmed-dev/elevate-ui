@@ -199,3 +199,84 @@ export const ReportInputSchema = z.object({
 });
 
 export type ReportInput = z.infer<typeof ReportInputSchema>;
+
+export const PlanDesignInputSchema = z.object({
+  prompt: z
+    .string()
+    .optional()
+    .describe("User request or design description (e.g. 'Make a dark portfolio for a 3D artist')"),
+  references: z
+    .array(z.string())
+    .optional()
+    .describe("Optional paths or URLs to reference screenshots"),
+  url: z
+    .string()
+    .url()
+    .optional()
+    .describe("Optional live URL of an existing website to analyze or improve"),
+  dir: z
+    .string()
+    .optional()
+    .describe("Optional path to an existing repository directory"),
+  mode: z
+    .enum(["BUILD_FROM_SCRATCH", "REFERENCE_DRIVEN", "EXISTING_SITE", "HYBRID"])
+    .optional()
+    .describe("Explicit planning mode override"),
+});
+
+export type PlanDesignInput = z.infer<typeof PlanDesignInputSchema>;
+
+export const BuildDesignInputSchema = z.object({
+  prompt: z
+    .string()
+    .optional()
+    .describe("User goal or design description (e.g. 'Make me a portfolio website')"),
+  references: z
+    .array(z.string())
+    .optional()
+    .describe("Optional paths or URLs to reference screenshots"),
+  url: z
+    .string()
+    .url()
+    .optional()
+    .describe("Optional live URL of an existing website to analyze or improve"),
+  dir: z
+    .string()
+    .optional()
+    .describe("Optional path to an existing repository directory"),
+  workspace: z
+    .string()
+    .optional()
+    .describe("Destination workspace root directory"),
+  mode: z
+    .enum(["BUILD_FROM_SCRATCH", "REFERENCE_DRIVEN", "EXISTING_SITE", "HYBRID"])
+    .optional()
+    .describe("Explicit workflow mode override"),
+  agent: z
+    .enum(["antigravity", "mock"])
+    .optional()
+    .default("antigravity")
+    .describe("Coding agent adapter to execute the task"),
+  model: z
+    .string()
+    .optional()
+    .describe("Model identifier for coding agent (default: 'gemini-3.7-flash-high')"),
+  autoApprove: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Auto-approve coding agent execution without interactive terminal prompt"),
+  dryRun: z
+    .boolean()
+    .optional()
+    .default(false)
+    .describe("Generate design plan and agent task context without launching agent or mutating files"),
+  timeoutMs: z
+    .number()
+    .int()
+    .min(1000)
+    .optional()
+    .describe("Timeout in milliseconds"),
+});
+
+export type BuildDesignInput = z.infer<typeof BuildDesignInputSchema>;

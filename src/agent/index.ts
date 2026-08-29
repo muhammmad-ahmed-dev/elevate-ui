@@ -10,4 +10,7 @@ export * from "./locator.js";
 export * from "./plan.js";
 export * from "./patch/index.js";
 export * from "./improve/index.js";
+export * from "./adapters/index.js";
+export * from "./design/index.js";
+export * from "./workflow/index.js";
 

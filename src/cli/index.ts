@@ -7,6 +7,8 @@ import { createCompareCommand } from "./commands/compare.js";
 import { createReportCommand } from "./commands/report.js";
 import { createMcpCommand } from "./commands/mcp.js";
 import { createBenchmarkCommand } from "./commands/benchmark.js";
+import { createPlanCommand } from "./commands/plan.js";
+import { createBuildCommand } from "./commands/build.js";
 
 export function createCli(): Command {
   const program = new Command();
@@ -16,6 +18,8 @@ export function createCli(): Command {
     .description("Elevate: Web Design Refinement Engine for Next.js & Tailwind CSS")
     .version("0.1.0");
 
+  program.addCommand(createBuildCommand());
+  program.addCommand(createPlanCommand());
   program.addCommand(createAuditCommand());
   program.addCommand(createImproveCommand());
   program.addCommand(createVerifyCommand());

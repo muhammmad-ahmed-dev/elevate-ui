@@ -69,7 +69,14 @@ export class BenchmarkEvaluator {
         e.includes("ECONNREFUSED") ||
         e.includes("ENOTFOUND") ||
         e.includes("fetch failed") ||
-        e.includes("No API key found")
+        e.includes("No API key found") ||
+        e.includes("AGENT_AUTHENTICATION_REQUIRED") ||
+        e.includes("authentication required") ||
+        e.includes("CLI_NOT_FOUND") ||
+        e.includes("not found in system PATH") ||
+        e.includes("UNAVAILABLE") ||
+        e.includes("503") ||
+        e.includes("Eligibility check failed")
     );
 
     // Determine classification
@@ -130,10 +137,15 @@ export class BenchmarkEvaluator {
   ): BenchmarkReport {
     const totalCases = runs.length;
     const successfulCases = runs.filter((r) => r.classification === "SUCCESS").length;
-    const failedCases = runs.filter((r) => r.classification === "PRODUCT_FAILURE").length;
+    const productFailures = runs.filter((r) => r.classification === "PRODUCT_FAILURE").length;
+    const failedCases = productFailures;
     const rolledBackCases = runs.filter((r) => r.passesRolledBack > 0).length;
     const safetyFailures = runs.filter((r) => r.classification === "SAFETY_FAILURE").length;
     const regressionsCount = runs.filter((r) => r.classification === "REGRESSION").length;
+    const regressions = regressionsCount;
+    const infrastructureFailures = runs.filter((r) => r.classification === "INFRASTRUCTURE_FAILURE").length;
+    const noActionable = runs.filter((r) => r.classification === "NO_ACTIONABLE").length;
+    const noActionableCases = noActionable;
 
     const durations = runs.map((r) => r.durationMs).sort((a, b) => a - b);
     const totalDuration = durations.reduce((acc, d) => acc + d, 0);
@@ -209,9 +221,14 @@ export class BenchmarkEvaluator {
       totalCases,
       successfulCases,
       failedCases,
-      rolledBackCases,
+      productFailures,
       safetyFailures,
       regressionsCount,
+      regressions,
+      infrastructureFailures,
+      noActionableCases,
+      noActionable,
+      rolledBackCases,
       averagePasses,
       averageDurationMs,
       issueResolutionRate,

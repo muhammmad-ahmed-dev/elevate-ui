@@ -78,7 +78,53 @@ export async function provisionBenchmarkRepository(
     await writeFile(compAbsPath, benchCase.componentCode, "utf8");
 
     // 4. Write .gitignore
-    await writeFile(join(projectRoot, ".gitignore"), "node_modules\n.next\n.elevate\n", "utf8");
+    await writeFile(
+      join(projectRoot, ".gitignore"),
+      "node_modules\n.next\n.elevate\n.gemini\n.agents\n",
+      "utf8"
+    );
+
+    // 4b. Write scoped tool permissions for coding agent adapters
+    const scopedPermissions = {
+      permissions: {
+        allow: [
+          "read_file",
+          "read_file(*)",
+          "edit_file",
+          "edit_file(*)",
+          "write_file",
+          "write_file(*)",
+          "write_to_file",
+          "write_to_file(*)",
+          "replace_file_content",
+          "replace_file_content(*)",
+          "view_file",
+          "view_file(*)",
+          "run_command",
+          "run_command(*)",
+          "command",
+          "command(*)",
+          "list_dir",
+          "list_dir(*)",
+          "grep_search",
+          "grep_search(*)",
+          "file_search",
+          "file_search(*)",
+        ],
+      },
+    };
+    await mkdir(join(projectRoot, ".gemini"), { recursive: true });
+    await writeFile(
+      join(projectRoot, ".gemini", "settings.json"),
+      JSON.stringify(scopedPermissions, null, 2),
+      "utf8"
+    );
+    await mkdir(join(projectRoot, ".agents"), { recursive: true });
+    await writeFile(
+      join(projectRoot, ".agents", "settings.json"),
+      JSON.stringify(scopedPermissions, null, 2),
+      "utf8"
+    );
 
     // 5. Initial Git commit
     await runGit(["add", "."], projectRoot);

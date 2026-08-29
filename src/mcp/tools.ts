@@ -14,12 +14,17 @@ import {
   VerifyInputSchema,
   CompareInputSchema,
   ReportInputSchema,
+  PlanDesignInputSchema,
+  BuildDesignInputSchema,
   type AuditInput,
   type ImproveInput,
   type VerifyInput,
   type CompareInput,
   type ReportInput,
+  type PlanDesignInput,
+  type BuildDesignInput,
 } from "./schemas.js";
+import type { UserRequest } from "../agent/design/types.js";
 import { formatMcpSuccess, formatMcpError } from "./errors.js";
 import { assertWithinAllowedDirectory } from "./security.js";
 import type { McpRunStore } from "./store.js";
@@ -409,4 +414,113 @@ export function registerMcpTools(server: McpServer, store: McpRunStore): void {
       }
     }
   );
+
+  // -------------------------------------------------------------------------
+  // 6. Tool: plan_design (Phase 4D)
+  // -------------------------------------------------------------------------
+  server.registerTool(
+    "plan_design",
+    {
+      title: "Plan Design & Generate Agent Context (Read-Only)",
+      description:
+        "Analyzes user design intent, synthesizes reference screenshots, formulates design systems and site plans, and builds token-optimized agent context without modifying source files.",
+      inputSchema: PlanDesignInputSchema,
+    },
+    async (params: PlanDesignInput) => {
+      try {
+        const { AgentDirector } = await import("../agent/design/director.js");
+        const request: UserRequest = {
+          prompt: params.prompt,
+          references: params.references,
+          existingUrl: params.url,
+          existingRepoPath: params.dir ? assertWithinAllowedDirectory(params.dir) : undefined,
+          targetMode: params.mode,
+        };
+
+        const result = AgentDirector.plan(request);
+
+        return formatMcpSuccess("SUCCESS", "Design plan generated successfully", {
+          runId: result.planId,
+          details: {
+            planId: result.planId,
+            mode: result.mode,
+            projectType: result.designBrief.projectType,
+            brandDirection: result.designBrief.brandDirection,
+            visualDirection: result.designBrief.visualDirection,
+            primaryCta: result.designBrief.primaryCta,
+            estimatedTokens: result.agentContext.metrics.estimatedTokens,
+            characterCount: result.agentContext.metrics.characterCount,
+            structuredPrompt: result.agentContext.structuredPrompt,
+            humanSummary: result.humanSummary,
+          },
+        });
+      } catch (err: any) {
+        return formatMcpError(err);
+      }
+    }
+  );
+
+  // -------------------------------------------------------------------------
+  // 7. Tool: build_design (Phase 4E)
+  // -------------------------------------------------------------------------
+  server.registerTool(
+    "build_design",
+    {
+      title: "Build Design with Agent Director",
+      description:
+        "Directs external coding agents to build or improve web applications from prompts, screenshots, and repositories.",
+      inputSchema: BuildDesignInputSchema,
+    },
+    async (params: BuildDesignInput) => {
+      try {
+        const { WorkflowEngine } = await import("../agent/workflow/engine.js");
+        const options = {
+          prompt: params.prompt,
+          references: params.references,
+          existingUrl: params.url,
+          existingRepoPath: params.dir ? assertWithinAllowedDirectory(params.dir) : undefined,
+          workspaceRoot: params.workspace ? assertWithinAllowedDirectory(params.workspace) : undefined,
+          targetMode: params.mode,
+          agentName: params.agent,
+          agentModel: params.model,
+          autoApprove: params.autoApprove ?? false,
+          dryRun: params.dryRun ?? false,
+          timeoutMs: params.timeoutMs,
+        };
+
+        const result = await WorkflowEngine.run(options);
+
+        const statusStr = result.status === "SUCCESS"
+          ? "SUCCESS"
+          : result.status === "DRY_RUN"
+          ? "DRY_RUN"
+          : result.status === "CANCELLED"
+          ? "APPROVAL_REQUIRED"
+          : result.status;
+
+        return formatMcpSuccess(statusStr as any, result.summary, {
+          runId: result.workflowId,
+          details: {
+            workflowId: result.workflowId,
+            mode: result.mode,
+            status: result.status,
+            workspaceRoot: result.workspaceRoot,
+            durationMs: result.durationMs,
+            summary: result.summary,
+            verification: result.verification
+              ? {
+                  hardGatesPassed: result.verification.hardGatesPassed,
+                  totalFindings: result.verification.totalFindings,
+                  criticalFindings: result.verification.criticalFindings,
+                  viewportsCaptured: result.verification.viewportsCaptured,
+                }
+              : undefined,
+          },
+        });
+      } catch (err: any) {
+        return formatMcpError(err);
+      }
+    }
+  );
 }
+

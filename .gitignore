@@ -1,6 +1,7 @@
 node_modules
 dist
 elevate-report
+elevate-benchmark-comparison
 .env
 .env.*
 *.log
