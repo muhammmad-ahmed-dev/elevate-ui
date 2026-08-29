@@ -1,8 +1,9 @@
 /**
- * Phase 5A: Agent-Alone vs Agent+Elevate Comparison — Type Definitions
+ * Phase 5A & 5B: Agent-Alone vs Agent+Elevate Comparison — Type Definitions
  *
- * Defines the data contracts, metrics models, and comparison report shapes
- * for controlled A/B evaluation between baseline coding agents and Elevate.
+ * Defines the data contracts, metrics models, build validity evaluations,
+ * and comparison report shapes for controlled A/B evaluation between baseline
+ * coding agents and Elevate.
  */
 
 import type { BenchmarkCaseClassification } from "./types.js";
@@ -14,6 +15,100 @@ export type ComparisonRunMode = "AGENT_ALONE" | "AGENT_ELEVATE";
 export type TokenMeasurementStatus = "MEASURED" | "ESTIMATED" | "UNAVAILABLE";
 
 export type DimensionOutcome = "WIN" | "TIE" | "LOSS";
+
+/**
+ * Effective high-level product build outcome.
+ * Prevents empty or stub builds with 0 DOM findings from falsely ranking as higher quality.
+ */
+export type EffectiveOutcome =
+  | "INVALID_BUILD"
+  | "VALID_BUILD"
+  | "VALID_BUILD_IMPROVED"
+  | "VALID_BUILD_REGRESSED"
+  | "INFRASTRUCTURE_FAILURE"
+  | "SAFETY_FAILURE";
+
+/**
+ * Task-level structural expectations for non-leaking build validity verification.
+ */
+export interface TaskExpectedSignals {
+  /** Expected logical sections (e.g. ['hero', 'projects', 'contact', 'pricing']). */
+  expectedSections?: string[];
+
+  /** Expected domain keywords that should be present in rendered content. */
+  expectedKeywords?: string[];
+
+  /** Minimum number of meaningful components / sections expected. */
+  minComponentCount?: number;
+
+  /** Minimum number of interactive elements (buttons, inputs, links). */
+  minInteractiveElements?: number;
+
+  /** Minimum text content length in characters across the rendered page. */
+  minTextLength?: number;
+}
+
+/**
+ * Detailed DOM and build validity evaluation result.
+ */
+export interface BuildValidityResult {
+  /** Whether the ephemeral preview server booted successfully. */
+  serverStarted: boolean;
+
+  /** Whether HTTP GET to the preview route returned HTTP 200. */
+  routeReachable: boolean;
+
+  /** Whether valid HTML content was returned in response. */
+  htmlReturned: boolean;
+
+  /** Whether an HTML <body> element with child nodes is present. */
+  bodyPresent: boolean;
+
+  /** Whether the rendered DOM contains non-trivial, meaningful structure. */
+  meaningfulDomPresent: boolean;
+
+  /** Whether task-specific structural signals (sections/keywords) are satisfied. */
+  expectedStructurePresent: boolean;
+
+  /** Rendered DOM content density metrics. */
+  contentDensity: {
+    textLength: number;
+    elementCount: number;
+    interactiveCount: number;
+    sectionCount: number;
+    headingCount: number;
+  };
+
+  /** Whether the rendered page is blank or whitespace-only. */
+  blankPageDetected: boolean;
+
+  /** Whether the rendered page is an unrendered stub or generic placeholder. */
+  stubPageDetected: boolean;
+
+  /** Uncaught server/runtime errors observed during execution. */
+  runtimeErrors: string[];
+
+  /** Browser console error messages captured by Playwright. */
+  browserConsoleErrors: string[];
+
+  /** Overall boolean: true if and only if the build is functioning and meaningful. */
+  buildValid: boolean;
+
+  /** Effective product outcome classification. */
+  effectiveOutcome: EffectiveOutcome;
+
+  /** Human-readable explanation of the validity classification. */
+  reason: string;
+
+  /** List of expected sections found in the rendered DOM. */
+  matchedSections: string[];
+
+  /** List of expected sections missing from the rendered DOM. */
+  missingSections: string[];
+
+  /** List of expected domain keywords found in the rendered DOM. */
+  matchedKeywords: string[];
+}
 
 /**
  * Execution metrics captured from an individual benchmark run.
@@ -81,6 +176,12 @@ export interface ComparisonExecutionMetrics {
 
   /** Total number of acceptance criteria evaluated. */
   acceptanceCriteriaTotal: number;
+
+  /** Deterministic build validity assessment. */
+  buildValidity: BuildValidityResult;
+
+  /** Effective product outcome. */
+  effectiveOutcome: EffectiveOutcome;
 
   /** Whether all hard gates passed and target defects were reduced. */
   success: boolean;
@@ -155,7 +256,7 @@ export interface AgentBenchmarkComparison {
 
   /** Independent outcome for each evaluated dimension. */
   dimensionWinners: {
-    /** Higher resolved findings, lower residual defects, and higher acceptance satisfaction. */
+    /** Higher resolved findings, lower residual defects, and higher acceptance satisfaction on valid builds. */
     quality: DimensionOutcome;
 
     /** Higher defects resolved per turn or lower token waste. */
@@ -226,6 +327,8 @@ export interface ComparisonSuiteReport {
       totalResolvedFindings: number;
       totalFinalFindings: number;
       totalRegressions: number;
+      validBuildCount: number;
+      invalidBuildCount: number;
       successRate: number;
       avgAcceptanceRate: number;
     };
@@ -235,6 +338,8 @@ export interface ComparisonSuiteReport {
       totalResolvedFindings: number;
       totalFinalFindings: number;
       totalRegressions: number;
+      validBuildCount: number;
+      invalidBuildCount: number;
       successRate: number;
       avgAcceptanceRate: number;
     };

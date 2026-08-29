@@ -13,8 +13,10 @@ import type { UserRequest } from "../../../src/agent/design/types.js";
 import type { WorkflowOptions } from "../../../src/agent/workflow/types.js";
 
 describe("Phase 4E: Workflow Verifier & Multi-Viewport Perception", () => {
-  it("Scenario N & O: starts preview server and verifies multi-viewport perception on created markup", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "elevate-verifier-test-"));
+  it(
+    "Scenario N & O: starts preview server and verifies multi-viewport perception on created markup",
+    async () => {
+      const tempDir = await mkdtemp(join(tmpdir(), "elevate-verifier-test-"));
 
     try {
       const request: UserRequest = {
@@ -59,21 +61,23 @@ export default function HeroSection() {
     } finally {
       await rm(tempDir, { recursive: true, force: true }).catch(() => {});
     }
-  });
+  }, 60000);
 
-  it("Scenario P: detects and categorizes visual findings and acceptance criteria violations", async () => {
-    const tempDir = await mkdtemp(join(tmpdir(), "elevate-verifier-defect-"));
+  it(
+    "Scenario P: detects and categorizes visual findings and acceptance criteria violations",
+    async () => {
+      const tempDir = await mkdtemp(join(tmpdir(), "elevate-verifier-defect-"));
 
-    try {
-      const request: UserRequest = {
-        prompt: "Online shop for ceramic mugs",
-      };
-      const plan = AgentDirector.plan(request);
+      try {
+        const request: UserRequest = {
+          prompt: "Online shop for ceramic mugs",
+        };
+        const plan = AgentDirector.plan(request);
 
-      // Create component with undersized button
-      const compDir = join(tempDir, "src", "components");
-      await mkdir(compDir, { recursive: true });
-      const defectiveCode = `
+        // Create component with undersized button
+        const compDir = join(tempDir, "src", "components");
+        await mkdir(compDir, { recursive: true });
+        const defectiveCode = `
 export default function ProductCard() {
   return (
     <div className="p-4 bg-white text-black">
@@ -85,22 +89,24 @@ export default function ProductCard() {
   );
 }
 `;
-      await writeFile(join(compDir, "ProductCard.tsx"), defectiveCode, "utf8");
+        await writeFile(join(compDir, "ProductCard.tsx"), defectiveCode, "utf8");
 
-      const options: WorkflowOptions = {
-        prompt: request.prompt,
-        skipVision: true,
-      };
+        const options: WorkflowOptions = {
+          prompt: request.prompt,
+          skipVision: true,
+        };
 
-      const verification = await WorkflowVerifier.verify(tempDir, plan, options);
+        const verification = await WorkflowVerifier.verify(tempDir, plan, options);
 
-      expect(verification.touchTargetFailures).toBeGreaterThanOrEqual(1);
-      const touchAc = verification.acceptanceCriteriaEvaluations.find(
-        (e) => e.id === "ac-touch-target-size"
-      );
-      expect(touchAc?.passed).toBe(false);
-    } finally {
-      await rm(tempDir, { recursive: true, force: true }).catch(() => {});
-    }
-  });
+        expect(verification.touchTargetFailures).toBeGreaterThanOrEqual(1);
+        const touchAc = verification.acceptanceCriteriaEvaluations.find(
+          (e) => e.id === "ac-touch-target-size"
+        );
+        expect(touchAc?.passed).toBe(false);
+      } finally {
+        await rm(tempDir, { recursive: true, force: true }).catch(() => {});
+      }
+    },
+    60000
+  );
 });

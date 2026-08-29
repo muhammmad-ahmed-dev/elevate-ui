@@ -1,0 +1,199 @@
+{
+  "reportId": "test-report-5b",
+  "timestamp": "2026-08-29T18:02:45.683Z",
+  "suiteName": "Test 5B Suite",
+  "agent": "mock",
+  "model": "mock-model",
+  "totalCases": 1,
+  "elevateWins": {
+    "qualityWins": 1,
+    "efficiencyWins": 1,
+    "safetyWins": 1,
+    "timeWins": 1
+  },
+  "agentAloneWins": {
+    "qualityWins": 0,
+    "efficiencyWins": 0,
+    "safetyWins": 0,
+    "timeWins": 0
+  },
+  "ties": {
+    "qualityTies": 0,
+    "efficiencyTies": 0,
+    "safetyTies": 0,
+    "timeTies": 0
+  },
+  "aggregateMetrics": {
+    "agentAlone": {
+      "totalDurationMs": 100,
+      "avgDurationMs": 100,
+      "totalResolvedFindings": 0,
+      "totalFinalFindings": 0,
+      "totalRegressions": 0,
+      "validBuildCount": 1,
+      "invalidBuildCount": 0,
+      "successRate": 1,
+      "avgAcceptanceRate": 1
+    },
+    "agentElevate": {
+      "totalDurationMs": 100,
+      "avgDurationMs": 100,
+      "totalResolvedFindings": 2,
+      "totalFinalFindings": 0,
+      "totalRegressions": 0,
+      "validBuildCount": 1,
+      "invalidBuildCount": 0,
+      "successRate": 1,
+      "avgAcceptanceRate": 1
+    }
+  },
+  "comparisons": [
+    {
+      "caseId": "comp-portfolio-01",
+      "caseName": "Developer Portfolio & Projects Showcase",
+      "category": "portfolio",
+      "inputMode": "BUILD_FROM_SCRATCH",
+      "agent": "mock",
+      "model": "default",
+      "baselineRun": {
+        "mode": "AGENT_ALONE",
+        "totalDurationMs": 31,
+        "agentDurationMs": 0,
+        "planningDurationMs": 0,
+        "verificationDurationMs": 0,
+        "estimatedContextTokens": 21,
+        "tokenStatus": "ESTIMATED",
+        "filesChanged": 0,
+        "linesAdded": 0,
+        "linesDeleted": 0,
+        "iterations": 1,
+        "initialFindingCount": 0,
+        "finalFindingCount": 0,
+        "resolvedFindingCount": 0,
+        "newFindingCount": 0,
+        "regressionCount": 0,
+        "acceptanceCriteriaPassed": 0,
+        "acceptanceCriteriaTotal": 9,
+        "buildValidity": {
+          "serverStarted": true,
+          "routeReachable": true,
+          "htmlReturned": true,
+          "bodyPresent": true,
+          "meaningfulDomPresent": false,
+          "expectedStructurePresent": false,
+          "contentDensity": {
+            "textLength": 80,
+            "elementCount": 4,
+            "interactiveCount": 1,
+            "sectionCount": 0,
+            "headingCount": 1
+          },
+          "blankPageDetected": false,
+          "stubPageDetected": true,
+          "runtimeErrors": [],
+          "browserConsoleErrors": [],
+          "buildValid": false,
+          "effectiveOutcome": "INVALID_BUILD",
+          "reason": "Trivial unrendered stub detected (80 text chars, 4 DOM elements)",
+          "matchedSections": [
+            "contact"
+          ],
+          "missingSections": [
+            "hero",
+            "project"
+          ],
+          "matchedKeywords": [
+            "portfolio",
+            "contact"
+          ]
+        },
+        "effectiveOutcome": "INVALID_BUILD",
+        "success": true,
+        "classification": "SUCCESS",
+        "modifiedFiles": [],
+        "gitDiff": ""
+      },
+      "elevateRun": {
+        "mode": "AGENT_ELEVATE",
+        "totalDurationMs": 14,
+        "agentDurationMs": 0,
+        "planningDurationMs": 10,
+        "verificationDurationMs": 0,
+        "estimatedContextTokens": 2005,
+        "tokenStatus": "ESTIMATED",
+        "filesChanged": 0,
+        "linesAdded": 0,
+        "linesDeleted": 0,
+        "iterations": 1,
+        "initialFindingCount": 0,
+        "finalFindingCount": 0,
+        "resolvedFindingCount": 0,
+        "newFindingCount": 0,
+        "regressionCount": 0,
+        "acceptanceCriteriaPassed": 0,
+        "acceptanceCriteriaTotal": 9,
+        "buildValidity": {
+          "serverStarted": true,
+          "routeReachable": true,
+          "htmlReturned": true,
+          "bodyPresent": true,
+          "meaningfulDomPresent": false,
+          "expectedStructurePresent": false,
+          "contentDensity": {
+            "textLength": 80,
+            "elementCount": 4,
+            "interactiveCount": 1,
+            "sectionCount": 0,
+            "headingCount": 1
+          },
+          "blankPageDetected": false,
+          "stubPageDetected": true,
+          "runtimeErrors": [],
+          "browserConsoleErrors": [],
+          "buildValid": false,
+          "effectiveOutcome": "INVALID_BUILD",
+          "reason": "Trivial unrendered stub detected (80 text chars, 4 DOM elements)",
+          "matchedSections": [
+            "contact"
+          ],
+          "missingSections": [
+            "hero",
+            "project"
+          ],
+          "matchedKeywords": [
+            "portfolio",
+            "contact"
+          ]
+        },
+        "effectiveOutcome": "INVALID_BUILD",
+        "success": true,
+        "classification": "SUCCESS",
+        "modifiedFiles": [],
+        "gitDiff": ""
+      },
+      "qualityDelta": 0,
+      "efficiencyDelta": 0,
+      "defectDelta": 0,
+      "regressionDelta": 0,
+      "timeDelta": -17,
+      "turnDelta": 0,
+      "acceptanceDelta": 0,
+      "dimensionWinners": {
+        "quality": "TIE",
+        "efficiency": "TIE",
+        "safety": "TIE",
+        "time": "TIE"
+      }
+    }
+  ],
+  "reproducibility": {
+    "seed": 42,
+    "agent": "mock",
+    "model": "mock-model",
+    "nodeVersion": "v24.18.0",
+    "platform": "win32",
+    "gitCommit": "test",
+    "timestamp": "2026-08-29T18:02:45.683Z",
+    "fixtureHashes": {}
+  }
+}

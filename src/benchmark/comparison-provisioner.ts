@@ -24,10 +24,13 @@ async function runGit(cmd: string[], cwd: string): Promise<string> {
 export interface ComparisonWorkspacePair {
   caseId: string;
   snapshotHash: string;
+  masterTreeHash: string;
   aloneWorkspaceRoot: string;
   elevateWorkspaceRoot: string;
   cleanup: () => Promise<void>;
 }
+
+export type IsolatedComparisonPair = ComparisonWorkspacePair;
 
 /**
  * Computes a deterministic SHA-256 hash of all tracked files in a workspace.
@@ -186,6 +189,7 @@ export class ComparisonProvisioner {
       return {
         caseId: comparisonCase.id,
         snapshotHash,
+        masterTreeHash: snapshotHash,
         aloneWorkspaceRoot: aloneRoot,
         elevateWorkspaceRoot: elevateRoot,
         cleanup: async () => {

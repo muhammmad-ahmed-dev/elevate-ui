@@ -1,8 +1,9 @@
 /**
- * Phase 5A: Benchmark Comparison Reporter (HTML & JSON)
+ * Phase 5A & 5B: Benchmark Comparison Reporter (HTML & JSON)
  *
  * Formats side-by-side comparative benchmark findings into structured JSON
- * and interactive, publication-quality HTML reports.
+ * and interactive, publication-quality HTML reports featuring build completeness,
+ * DOM density metrics, structural signal validation, and independent dimensional outcomes.
  */
 
 import { writeFile, mkdir } from "node:fs/promises";
@@ -11,7 +12,19 @@ import type { ComparisonSuiteReport } from "./comparison-types.js";
 import { logger } from "../utils/logger.js";
 
 export function formatComparisonHtml(report: ComparisonSuiteReport): string {
-  const { suiteName, timestamp, agent, model, totalCases, elevateWins, agentAloneWins, ties, aggregateMetrics, comparisons, reproducibility } = report;
+  const {
+    suiteName,
+    timestamp,
+    agent,
+    model,
+    totalCases,
+    elevateWins,
+    agentAloneWins,
+    ties,
+    aggregateMetrics,
+    comparisons,
+    reproducibility,
+  } = report;
 
   const casesRows = comparisons
     .map((c) => {
@@ -43,12 +56,39 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
           ? `<span class="badge loss">ALONE WIN</span>`
           : `<span class="badge tie">TIE</span>`;
 
+      const aloneValidity = c.baselineRun.buildValidity;
+      const elevateValidity = c.elevateRun.buildValidity;
+
+      const aloneBuildBadge = aloneValidity?.buildValid
+        ? `<span class="badge win">VALID</span>`
+        : `<span class="badge loss" title="${aloneValidity?.reason || "Invalid build"}">INVALID</span>`;
+
+      const elevateBuildBadge = elevateValidity?.buildValid
+        ? `<span class="badge win">VALID</span>`
+        : `<span class="badge loss" title="${elevateValidity?.reason || "Invalid build"}">INVALID</span>`;
+
+      const aloneDensity = aloneValidity?.contentDensity
+        ? `${aloneValidity.contentDensity.textLength} chars • ${aloneValidity.contentDensity.elementCount} tags • ${aloneValidity.contentDensity.interactiveCount} btns`
+        : "N/A";
+
+      const elevateDensity = elevateValidity?.contentDensity
+        ? `${elevateValidity.contentDensity.textLength} chars • ${elevateValidity.contentDensity.elementCount} tags • ${elevateValidity.contentDensity.interactiveCount} btns`
+        : "N/A";
+
       return `
       <tr>
         <td class="font-mono font-bold">${c.caseId}</td>
         <td>
           <div class="font-semibold">${c.caseName}</div>
           <div class="text-muted text-xs">${c.category} • ${c.inputMode}</div>
+        </td>
+        <td class="text-center">
+          <div class="stat-pair">
+            <span class="alone">${aloneBuildBadge}</span> / <span class="elevate">${elevateBuildBadge}</span>
+          </div>
+          <div class="text-xs text-muted" style="margin-top: 4px;">
+            A: ${c.baselineRun.effectiveOutcome} | E: ${c.elevateRun.effectiveOutcome}
+          </div>
         </td>
         <td class="text-center">
           <div class="stat-pair">
@@ -61,6 +101,7 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
             <span class="alone">${c.baselineRun.acceptanceCriteriaPassed}/${c.baselineRun.acceptanceCriteriaTotal}</span> /
             <span class="elevate">${c.elevateRun.acceptanceCriteriaPassed}/${c.elevateRun.acceptanceCriteriaTotal}</span>
           </div>
+          <div class="text-xs text-muted" title="Alone: ${aloneDensity} | Elevate: ${elevateDensity}">Density: <span class="alone">${aloneValidity?.contentDensity?.textLength || 0}c</span> / <span class="elevate">${elevateValidity?.contentDensity?.textLength || 0}c</span></div>
         </td>
         <td class="text-center">
           <div class="stat-pair">
@@ -96,7 +137,7 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { background-color: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 32px; }
-    .container { max-width: 1300px; margin: 0 auto; }
+    .container { max-width: 1350px; margin: 0 auto; }
     header { margin-bottom: 32px; border-bottom: 1px solid var(--border); padding-bottom: 24px; }
     h1 { font-size: 28px; font-weight: 800; }
     .meta { color: var(--muted); font-size: 14px; margin-top: 6px; }
@@ -135,7 +176,9 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
     <header>
       <h1>${suiteName}</h1>
       <div class="meta">
-        Agent: <strong>${agent}</strong> (${model}) • Total Cases: <strong>${totalCases}</strong> • Node: ${reproducibility.nodeVersion} • Git: ${reproducibility.gitCommit} • Generated: ${timestamp}
+        Agent: <strong>${agent}</strong> (${model}) • Total Cases: <strong>${totalCases}</strong> • Node: ${
+    reproducibility.nodeVersion
+  } • Git: ${reproducibility.gitCommit} • Generated: ${timestamp}
       </div>
     </header>
 
@@ -174,18 +217,34 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
         </thead>
         <tbody>
           <tr>
+            <td><strong>Valid Functioning Builds</strong></td>
+            <td class="text-center">${aggregateMetrics.agentAlone.validBuildCount || 0} / ${totalCases}</td>
+            <td class="text-center font-bold" style="color: var(--elevate);">${aggregateMetrics.agentElevate.validBuildCount || 0} / ${totalCases}</td>
+            <td class="text-center font-bold" style="color: ${(aggregateMetrics.agentElevate.validBuildCount || 0) >= (aggregateMetrics.agentAlone.validBuildCount || 0) ? "var(--win)" : "var(--loss)"};">
+              ${(aggregateMetrics.agentElevate.validBuildCount || 0) - (aggregateMetrics.agentAlone.validBuildCount || 0) >= 0 ? "+" : ""}${(aggregateMetrics.agentElevate.validBuildCount || 0) - (aggregateMetrics.agentAlone.validBuildCount || 0)}
+            </td>
+          </tr>
+          <tr>
             <td><strong>Success Rate</strong></td>
             <td class="text-center">${Math.round(aggregateMetrics.agentAlone.successRate * 100)}%</td>
             <td class="text-center font-bold" style="color: var(--elevate);">${Math.round(aggregateMetrics.agentElevate.successRate * 100)}%</td>
-            <td class="text-center font-bold" style="color: ${aggregateMetrics.agentElevate.successRate >= aggregateMetrics.agentAlone.successRate ? "var(--win)" : "var(--loss)"};">
-              ${aggregateMetrics.agentElevate.successRate >= aggregateMetrics.agentAlone.successRate ? "+" : ""}${Math.round((aggregateMetrics.agentElevate.successRate - aggregateMetrics.agentAlone.successRate) * 100)}%
+            <td class="text-center font-bold" style="color: ${
+              aggregateMetrics.agentElevate.successRate >= aggregateMetrics.agentAlone.successRate ? "var(--win)" : "var(--loss)"
+            };">
+              ${aggregateMetrics.agentElevate.successRate >= aggregateMetrics.agentAlone.successRate ? "+" : ""}${Math.round(
+                (aggregateMetrics.agentElevate.successRate - aggregateMetrics.agentAlone.successRate) * 100
+              )}%
             </td>
           </tr>
           <tr>
             <td><strong>Total Resolved Findings</strong></td>
             <td class="text-center">${aggregateMetrics.agentAlone.totalResolvedFindings}</td>
             <td class="text-center font-bold" style="color: var(--elevate);">${aggregateMetrics.agentElevate.totalResolvedFindings}</td>
-            <td class="text-center font-bold" style="color: ${aggregateMetrics.agentElevate.totalResolvedFindings >= aggregateMetrics.agentAlone.totalResolvedFindings ? "var(--win)" : "var(--loss)"};">
+            <td class="text-center font-bold" style="color: ${
+              aggregateMetrics.agentElevate.totalResolvedFindings >= aggregateMetrics.agentAlone.totalResolvedFindings
+                ? "var(--win)"
+                : "var(--loss)"
+            };">
               +${aggregateMetrics.agentElevate.totalResolvedFindings - aggregateMetrics.agentAlone.totalResolvedFindings}
             </td>
           </tr>
@@ -193,16 +252,28 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
             <td><strong>Total Regressions</strong></td>
             <td class="text-center">${aggregateMetrics.agentAlone.totalRegressions}</td>
             <td class="text-center font-bold" style="color: var(--elevate);">${aggregateMetrics.agentElevate.totalRegressions}</td>
-            <td class="text-center font-bold" style="color: ${aggregateMetrics.agentElevate.totalRegressions <= aggregateMetrics.agentAlone.totalRegressions ? "var(--win)" : "var(--loss)"};">
+            <td class="text-center font-bold" style="color: ${
+              aggregateMetrics.agentElevate.totalRegressions <= aggregateMetrics.agentAlone.totalRegressions
+                ? "var(--win)"
+                : "var(--loss)"
+            };">
               ${aggregateMetrics.agentElevate.totalRegressions - aggregateMetrics.agentAlone.totalRegressions}
             </td>
           </tr>
           <tr>
             <td><strong>Avg Acceptance Rate</strong></td>
             <td class="text-center">${Math.round(aggregateMetrics.agentAlone.avgAcceptanceRate * 100)}%</td>
-            <td class="text-center font-bold" style="color: var(--elevate);">${Math.round(aggregateMetrics.agentElevate.avgAcceptanceRate * 100)}%</td>
-            <td class="text-center font-bold" style="color: ${aggregateMetrics.agentElevate.avgAcceptanceRate >= aggregateMetrics.agentAlone.avgAcceptanceRate ? "var(--win)" : "var(--loss)"};">
-              +${Math.round((aggregateMetrics.agentElevate.avgAcceptanceRate - aggregateMetrics.agentAlone.avgAcceptanceRate) * 100)}%
+            <td class="text-center font-bold" style="color: var(--elevate);">${Math.round(
+              aggregateMetrics.agentElevate.avgAcceptanceRate * 100
+            )}%</td>
+            <td class="text-center font-bold" style="color: ${
+              aggregateMetrics.agentElevate.avgAcceptanceRate >= aggregateMetrics.agentAlone.avgAcceptanceRate
+                ? "var(--win)"
+                : "var(--loss)"
+            };">
+              +${Math.round(
+                (aggregateMetrics.agentElevate.avgAcceptanceRate - aggregateMetrics.agentAlone.avgAcceptanceRate) * 100
+              )}%
             </td>
           </tr>
           <tr>
@@ -210,7 +281,9 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
             <td class="text-center">${aggregateMetrics.agentAlone.avgDurationMs}ms</td>
             <td class="text-center font-bold" style="color: var(--elevate);">${aggregateMetrics.agentElevate.avgDurationMs}ms</td>
             <td class="text-center font-bold text-muted">
-              ${aggregateMetrics.agentElevate.avgDurationMs - aggregateMetrics.agentAlone.avgDurationMs > 0 ? "+" : ""}${aggregateMetrics.agentElevate.avgDurationMs - aggregateMetrics.agentAlone.avgDurationMs}ms
+              ${aggregateMetrics.agentElevate.avgDurationMs - aggregateMetrics.agentAlone.avgDurationMs > 0 ? "+" : ""}${
+                aggregateMetrics.agentElevate.avgDurationMs - aggregateMetrics.agentAlone.avgDurationMs
+              }ms
             </td>
           </tr>
         </tbody>
@@ -228,8 +301,9 @@ export function formatComparisonHtml(report: ComparisonSuiteReport): string {
           <tr>
             <th>Case ID</th>
             <th>Task & Input Mode</th>
-            <th class="text-center">Resolved Findings (Alone / Elevate)</th>
-            <th class="text-center">Acceptance Criteria</th>
+            <th class="text-center">Build Validity (Alone / Elevate)</th>
+            <th class="text-center">Resolved Findings</th>
+            <th class="text-center">Acceptance & Density</th>
             <th class="text-center">Duration</th>
             <th class="text-center">Quality</th>
             <th class="text-center">Efficiency</th>

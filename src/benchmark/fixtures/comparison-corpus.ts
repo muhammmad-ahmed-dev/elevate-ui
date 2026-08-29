@@ -1,12 +1,13 @@
 /**
- * Phase 5A: Controlled Comparison Benchmark Corpus
+ * Phase 5A & 5B: Controlled Comparison Benchmark Corpus
  *
  * 12 representative, deterministic task fixtures spanning diverse domain
  * archetypes, input modes (vague prompts, detailed prompts, screenshot references,
- * existing site improvements), and visual requirements.
+ * existing site improvements), visual requirements, and task structural signals.
  */
 
 import type { InputMode } from "../../agent/design/types.js";
+import type { TaskExpectedSignals } from "../comparison-types.js";
 
 export interface ComparisonCase {
   id: string;
@@ -19,6 +20,7 @@ export interface ComparisonCase {
   initialComponentCode: string;
   expectedVisualImprovement: string;
   tags: string[];
+  expectedSignals?: TaskExpectedSignals;
 }
 
 export const COMPARISON_CORPUS: ComparisonCase[] = [
@@ -45,6 +47,12 @@ export default function Portfolio() {
 `,
     expectedVisualImprovement: "Modern dark developer portfolio with responsive work grid, skills tags, and 44x44px touch targets.",
     tags: ["portfolio", "vague", "dark-mode", "build-from-scratch"],
+    expectedSignals: {
+      expectedSections: ["hero", "project", "contact"],
+      expectedKeywords: ["portfolio", "project", "developer", "contact"],
+      minInteractiveElements: 2,
+      minTextLength: 120,
+    },
   },
 
   // 2. SaaS Developer Platform — Detailed Prompt (BUILD_FROM_SCRATCH)
@@ -70,6 +78,12 @@ export default function SaaSPlatform() {
 `,
     expectedVisualImprovement: "Bento feature grid, 3-tier responsive pricing cards, and high-contrast CTA.",
     tags: ["saas", "detailed", "pricing", "bento-grid", "build-from-scratch"],
+    expectedSignals: {
+      expectedSections: ["hero", "feature", "pricing"],
+      expectedKeywords: ["OmniFlow", "Starter", "Pro", "Enterprise", "pricing"],
+      minInteractiveElements: 3,
+      minTextLength: 180,
+    },
   },
 
   // 3. Creative Agency Showcase — Screenshot Reference (REFERENCE_DRIVEN)
@@ -96,6 +110,12 @@ export default function AgencyShowcase() {
 `,
     expectedVisualImprovement: "Monochrome editorial aesthetics, generous whitespace, and featured case studies.",
     tags: ["agency", "reference-driven", "screenshot", "editorial"],
+    expectedSignals: {
+      expectedSections: ["hero", "work", "contact"],
+      expectedKeywords: ["Aura", "design", "studio", "project"],
+      minInteractiveElements: 2,
+      minTextLength: 120,
+    },
   },
 
   // 4. Artisanal Product Storefront — Prompt + Screenshot (REFERENCE_DRIVEN)
@@ -122,6 +142,12 @@ export default function ProductStorefront() {
 `,
     expectedVisualImprovement: "Product gallery cards with pricing, badge tags, and mobile single-column reflow.",
     tags: ["ecommerce", "prompt-and-screenshot", "warm-palette", "storefront"],
+    expectedSignals: {
+      expectedSections: ["hero", "product", "collection"],
+      expectedKeywords: ["leather", "goods", "shop", "price"],
+      minInteractiveElements: 2,
+      minTextLength: 120,
+    },
   },
 
   // 5. Artisanal Bakery & Cafe Menu — Vague Prompt (BUILD_FROM_SCRATCH)
@@ -147,6 +173,12 @@ export default function BakeryMenu() {
 `,
     expectedVisualImprovement: "Categorized menu section with pricing, dietary labels, and store hours.",
     tags: ["restaurant", "bakery", "vague", "menu"],
+    expectedSignals: {
+      expectedSections: ["hero", "menu", "hours"],
+      expectedKeywords: ["bakery", "sourdough", "menu", "coffee"],
+      minInteractiveElements: 2,
+      minTextLength: 120,
+    },
   },
 
   // 6. Tech Publishing & Blog Feed — Detailed Prompt (BUILD_FROM_SCRATCH)
@@ -172,6 +204,12 @@ export default function BlogFeed() {
 `,
     expectedVisualImprovement: "Featured article banner, 2-column post list with read times, and responsive newsletter CTA.",
     tags: ["blog", "detailed", "typography", "readability"],
+    expectedSignals: {
+      expectedSections: ["hero", "featured", "posts", "newsletter"],
+      expectedKeywords: ["article", "engineering", "read", "subscribe"],
+      minInteractiveElements: 2,
+      minTextLength: 150,
+    },
   },
 
   // 7. Analytics KPI Console & Data Table — Detailed Prompt (BUILD_FROM_SCRATCH)
@@ -197,6 +235,12 @@ export default function AnalyticsDashboard() {
 `,
     expectedVisualImprovement: "4-card responsive KPI grid, delta percentage badges, and data table.",
     tags: ["dashboard", "kpi-cards", "detailed", "data-table"],
+    expectedSignals: {
+      expectedSections: ["metrics", "table", "dashboard"],
+      expectedKeywords: ["MRR", "Users", "analytics", "rate"],
+      minInteractiveElements: 2,
+      minTextLength: 140,
+    },
   },
 
   // 8. Smart Hardware Product Landing — Screenshot Reference (REFERENCE_DRIVEN)
@@ -223,6 +267,12 @@ export default function ProductLanding() {
 `,
     expectedVisualImprovement: "Feature callout bento with battery, driver specs, and pre-order CTA.",
     tags: ["product", "hardware", "reference-driven", "landing"],
+    expectedSignals: {
+      expectedSections: ["hero", "features", "specs"],
+      expectedKeywords: ["audio", "sound", "noise", "order"],
+      minInteractiveElements: 2,
+      minTextLength: 120,
+    },
   },
 
   // 9. Executive Advisory Profile — Vague Prompt (BUILD_FROM_SCRATCH)
@@ -248,6 +298,12 @@ export default function ExecutiveProfile() {
 `,
     expectedVisualImprovement: "Credibility stats, advisory pillars, and booking banner.",
     tags: ["personal-brand", "executive", "advisory", "vague"],
+    expectedSignals: {
+      expectedSections: ["hero", "advisory", "contact"],
+      expectedKeywords: ["advisor", "executive", "consulting", "strategy"],
+      minInteractiveElements: 2,
+      minTextLength: 120,
+    },
   },
 
   // 10. Developer API Reference & Documentation — Detailed Prompt (BUILD_FROM_SCRATCH)
@@ -273,6 +329,12 @@ export default function ApiDocs() {
 `,
     expectedVisualImprovement: "Sidebar navigation, dark syntax code snippet container, and status badges.",
     tags: ["documentation", "api-reference", "code-box", "detailed"],
+    expectedSignals: {
+      expectedSections: ["sidebar", "quickstart", "code"],
+      expectedKeywords: ["endpoint", "request", "response", "API"],
+      minInteractiveElements: 2,
+      minTextLength: 150,
+    },
   },
 
   // 11. Existing Portfolio Refinement — Existing Site Mode (EXISTING_SITE)
@@ -298,6 +360,12 @@ export default function LegacyPortfolio() {
 `,
     expectedVisualImprovement: "High-contrast text, 44x44px button dimensions, and enhanced typography hierarchy.",
     tags: ["existing-site", "accessibility", "touch-targets", "contrast"],
+    expectedSignals: {
+      expectedSections: ["portfolio", "showcase"],
+      expectedKeywords: ["design", "portfolio", "showcase"],
+      minInteractiveElements: 1,
+      minTextLength: 60,
+    },
   },
 
   // 12. Existing SaaS Layout Fix — Hybrid Mode (HYBRID)
@@ -326,6 +394,12 @@ export default function LegacySaaS() {
 `,
     expectedVisualImprovement: "Responsive container with max-w-full and zero horizontal overflow across 375px/768px/1440px.",
     tags: ["hybrid", "overflow", "responsive", "existing-site"],
+    expectedSignals: {
+      expectedSections: ["hero", "container"],
+      expectedKeywords: ["container", "started", "SaaS"],
+      minInteractiveElements: 1,
+      minTextLength: 60,
+    },
   },
 ];
 

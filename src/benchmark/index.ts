@@ -14,3 +14,4 @@ export * from "./fixtures/comparison-corpus.js";
 export * from "./comparison-provisioner.js";
 export * from "./comparison-runner.js";
 export * from "./comparison-reporter.js";
+export * from "./build-validity.js";

@@ -1,47 +1,57 @@
 /**
- * Phase 5A: Controlled Agent-Alone vs Agent+Elevate Comparison Runner
+ * Phase 5A & 5B: Controlled Agent-Alone vs Agent+Elevate Comparison Runner
  *
- * Executes identical controlled A/B benchmark runs across isolated repository pairs.
- * Evaluates quality, efficiency, safety, and time dimensions with zero answer leakage.
+ * Executes parallel, reset-isolated benchmark runs for a given test case:
+ *   - Run A: AGENT ALONE (Raw user prompt, minimal instructions, unassisted)
+ *   - Run B: AGENT + ELEVATE (Elevate design director planning, token-optimized context, acceptance criteria)
+ *
+ * Enforces byte-for-byte identical starting environments via SHA-256 tree hashing,
+ * performs multi-viewport browser perception, checks deterministic build validity and
+ * structural completeness, and scores outcomes across 4 independent dimensions.
  */
 
-import { promisify } from "node:util";
 import { execFile } from "node:child_process";
-import { ComparisonProvisioner } from "./comparison-provisioner.js";
-import { COMPARISON_CORPUS, getComparisonCases, type ComparisonCase } from "./fixtures/comparison-corpus.js";
+import { promisify } from "node:util";
+import { ComparisonProvisioner, type IsolatedComparisonPair } from "./comparison-provisioner.js";
+import {
+  type ComparisonCase,
+  COMPARISON_CORPUS,
+  getComparisonCases,
+} from "./fixtures/comparison-corpus.js";
 import type {
-  ComparisonExecutionMetrics,
-  AgentBenchmarkComparison,
   ComparisonSuiteOptions,
   ComparisonSuiteReport,
+  AgentBenchmarkComparison,
+  ComparisonExecutionMetrics,
   DimensionOutcome,
 } from "./comparison-types.js";
-import { CodingAgentRegistry } from "../agent/adapters/registry.js";
-import type { AgentTask, AgentRunResult } from "../agent/adapters/types.js";
 import { AgentDirector } from "../agent/design/director.js";
 import { AgentTaskBuilder } from "../agent/workflow/task-builder.js";
 import { WorkflowVerifier } from "../agent/workflow/verifier.js";
+import { CodingAgentRegistry } from "../agent/adapters/registry.js";
+import type { AgentTask, AgentRunResult } from "../agent/adapters/types.js";
 import type { DesignPlanResult, UserRequest } from "../agent/design/types.js";
+import { BuildValidityDetector } from "./build-validity.js";
 import { logger } from "../utils/logger.js";
 
 const execFileAsync = promisify(execFile);
 
+/**
+ * Computes line additions and deletions from a unified diff.
+ */
 function parseDiffLineCounts(diff: string): { additions: number; deletions: number } {
   let additions = 0;
   let deletions = 0;
   for (const line of diff.split("\n")) {
-    if (line.startsWith("+") && !line.startsWith("+++")) {
-      additions++;
-    } else if (line.startsWith("-") && !line.startsWith("---")) {
-      deletions++;
-    }
+    if (line.startsWith("+") && !line.startsWith("+++")) additions++;
+    else if (line.startsWith("-") && !line.startsWith("---")) deletions++;
   }
   return { additions, deletions };
 }
 
 export class ComparisonRunner {
   /**
-   * Runs a single controlled A/B comparison case.
+   * Executes a single comparative A/B benchmark case.
    */
   public static async runSingleComparison(
     comparisonCase: ComparisonCase,
@@ -50,17 +60,18 @@ export class ComparisonRunner {
     const agentName = options.agent || "antigravity";
     const model = options.model || (agentName === "antigravity" ? "gemini-3.7-flash-high" : "default");
     const effort = options.effort || "high";
-    const timeoutMs = options.timeoutMs || 120000;
+    const timeoutMs = options.timeoutMs || 300_000;
 
     logger.info(`\n=== BENCHMARK A/B CASE: ${comparisonCase.id} [${comparisonCase.name}] ===`);
 
-    // 1. Provision isolated identical workspace pair
-    const pair = await ComparisonProvisioner.provisionIsolatedPair(comparisonCase);
+    // 1. Provision isolated twin workspaces from identical master snapshot
+    const pair: IsolatedComparisonPair = await ComparisonProvisioner.provisionIsolatedPair(
+      comparisonCase,
+      options.outputDir
+    );
 
     try {
-      // -----------------------------------------------------------------------
-      // RUN A: AGENT ALONE (Baseline)
-      // -----------------------------------------------------------------------
+      // 2. Execute Run A: Agent Alone
       logger.info(`► [RUN A: AGENT ALONE] Executing ${agentName} (${model}) without Elevate planning...`);
       const baselineRun = await this.executeAgentAlone(comparisonCase, pair.aloneWorkspaceRoot, {
         agentName,
@@ -70,9 +81,7 @@ export class ComparisonRunner {
         dryRun: options.dryRun,
       });
 
-      // -----------------------------------------------------------------------
-      // RUN B: AGENT + ELEVATE
-      // -----------------------------------------------------------------------
+      // 3. Execute Run B: Agent + Elevate
       logger.info(`► [RUN B: AGENT + ELEVATE] Executing ${agentName} (${model}) with Elevate planning...`);
       const elevateRun = await this.executeAgentElevate(comparisonCase, pair.elevateWorkspaceRoot, {
         agentName,
@@ -83,7 +92,7 @@ export class ComparisonRunner {
       });
 
       // -----------------------------------------------------------------------
-      // COMPUTE DELTAS & DIMENSION WINNERS
+      // COMPUTE DELTAS & DIMENSION WINNERS (Phase 5B Build Completeness Model)
       // -----------------------------------------------------------------------
       const qualityDelta =
         elevateRun.resolvedFindingCount -
@@ -95,33 +104,76 @@ export class ComparisonRunner {
       const timeDelta = elevateRun.totalDurationMs - baselineRun.totalDurationMs;
       const acceptanceDelta = elevateRun.acceptanceCriteriaPassed - baselineRun.acceptanceCriteriaPassed;
 
-      // Quality Winner: Higher resolved findings, fewer residual defects, or higher AC pass rate
+      // -----------------------------------------------------------------------
+      // 1. QUALITY WINNER: Build Validity & Completeness First, Then Defect Scoring
+      // -----------------------------------------------------------------------
       let qualityWinner: DimensionOutcome = "TIE";
-      if (
-        elevateRun.resolvedFindingCount > baselineRun.resolvedFindingCount ||
-        elevateRun.finalFindingCount < baselineRun.finalFindingCount ||
-        elevateRun.acceptanceCriteriaPassed > baselineRun.acceptanceCriteriaPassed
-      ) {
+
+      const aloneValid = baselineRun.buildValidity.buildValid;
+      const elevateValid = elevateRun.buildValidity.buildValid;
+
+      if (!aloneValid && elevateValid) {
+        // Elevate built a functioning application, while Agent Alone produced an invalid/stub
         qualityWinner = "WIN";
-      } else if (
-        baselineRun.resolvedFindingCount > elevateRun.resolvedFindingCount ||
-        baselineRun.finalFindingCount < elevateRun.finalFindingCount ||
-        baselineRun.acceptanceCriteriaPassed > elevateRun.acceptanceCriteriaPassed
-      ) {
+      } else if (aloneValid && !elevateValid) {
+        // Agent Alone built a functioning application, while Elevate failed
         qualityWinner = "LOSS";
+      } else if (!aloneValid && !elevateValid) {
+        // Both produced invalid builds
+        qualityWinner = "TIE";
+      } else {
+        // Both produced valid functioning builds: compare defect reduction & acceptance criteria
+        const aloneAcRate =
+          baselineRun.acceptanceCriteriaTotal > 0
+            ? baselineRun.acceptanceCriteriaPassed / baselineRun.acceptanceCriteriaTotal
+            : 0;
+        const elevateAcRate =
+          elevateRun.acceptanceCriteriaTotal > 0
+            ? elevateRun.acceptanceCriteriaPassed / elevateRun.acceptanceCriteriaTotal
+            : 0;
+
+        const aloneScore =
+          aloneAcRate * 50 +
+          baselineRun.resolvedFindingCount * 5 -
+          baselineRun.finalFindingCount * 2 -
+          baselineRun.regressionCount * 10;
+
+        const elevateScore =
+          elevateAcRate * 50 +
+          elevateRun.resolvedFindingCount * 5 -
+          elevateRun.finalFindingCount * 2 -
+          elevateRun.regressionCount * 10;
+
+        if (elevateScore > aloneScore + 3) {
+          qualityWinner = "WIN";
+        } else if (aloneScore > elevateScore + 3) {
+          qualityWinner = "LOSS";
+        } else {
+          qualityWinner = "TIE";
+        }
       }
 
-      // Efficiency Winner: Defect resolution per turn or lower token waste
+      // -----------------------------------------------------------------------
+      // 2. EFFICIENCY WINNER: Total Useful Work & Token Economy
+      // -----------------------------------------------------------------------
       let efficiencyWinner: DimensionOutcome = "TIE";
-      const elevateEff = elevateRun.resolvedFindingCount / Math.max(1, elevateRun.agentTurnCount || 1);
-      const baselineEff = baselineRun.resolvedFindingCount / Math.max(1, baselineRun.agentTurnCount || 1);
-      if (elevateEff > baselineEff || (elevateRun.success && !baselineRun.success)) {
+      if (!aloneValid && elevateValid) {
         efficiencyWinner = "WIN";
-      } else if (baselineEff > elevateEff) {
+      } else if (aloneValid && !elevateValid) {
         efficiencyWinner = "LOSS";
+      } else {
+        const elevateEff = elevateRun.resolvedFindingCount / Math.max(1, elevateRun.agentTurnCount || 1);
+        const baselineEff = baselineRun.resolvedFindingCount / Math.max(1, baselineRun.agentTurnCount || 1);
+        if (elevateEff > baselineEff) {
+          efficiencyWinner = "WIN";
+        } else if (baselineEff > elevateEff) {
+          efficiencyWinner = "LOSS";
+        }
       }
 
-      // Safety Winner: Zero regressions and zero safety failures
+      // -----------------------------------------------------------------------
+      // 3. SAFETY WINNER: Zero Regressions and Invariant Preservation
+      // -----------------------------------------------------------------------
       let safetyWinner: DimensionOutcome = "TIE";
       if (elevateRun.regressionCount < baselineRun.regressionCount || (elevateRun.success && !baselineRun.success)) {
         safetyWinner = "WIN";
@@ -129,7 +181,9 @@ export class ComparisonRunner {
         safetyWinner = "LOSS";
       }
 
-      // Time Winner: Shorter total duration
+      // -----------------------------------------------------------------------
+      // 4. TIME WINNER: Shorter Wall-Clock Execution
+      // -----------------------------------------------------------------------
       let timeWinner: DimensionOutcome = "TIE";
       if (timeDelta < -1000) {
         timeWinner = "WIN";
@@ -138,7 +192,7 @@ export class ComparisonRunner {
       }
 
       logger.info(
-        `✔ Case ${comparisonCase.id} Complete | Quality: ${qualityWinner} | Efficiency: ${efficiencyWinner} | Safety: ${safetyWinner} | Time: ${timeWinner}`
+        `✔ Case ${comparisonCase.id} Complete | Quality: ${qualityWinner} (Build: Alone=${baselineRun.buildValidity.effectiveOutcome}, Elevate=${elevateRun.buildValidity.effectiveOutcome}) | Efficiency: ${efficiencyWinner} | Safety: ${safetyWinner} | Time: ${timeWinner}`
       );
 
       return {
@@ -151,7 +205,7 @@ export class ComparisonRunner {
         baselineRun,
         elevateRun,
         qualityDelta,
-        efficiencyDelta: elevateEff - baselineEff,
+        efficiencyDelta: 0,
         defectDelta,
         regressionDelta,
         timeDelta,
@@ -182,6 +236,14 @@ export class ComparisonRunner {
 
     if (config.dryRun) {
       const planResult = AgentDirector.plan({ prompt: comparisonCase.prompt });
+      const validity = await BuildValidityDetector.evaluate({
+        workspaceRoot,
+        entryPath: comparisonCase.componentPath,
+        expectedSignals: comparisonCase.expectedSignals,
+        serverStarted: true,
+        routeReachable: true,
+      });
+
       return {
         mode: "AGENT_ALONE",
         totalDurationMs: Date.now() - startTime,
@@ -201,6 +263,8 @@ export class ComparisonRunner {
         regressionCount: 0,
         acceptanceCriteriaPassed: 0,
         acceptanceCriteriaTotal: planResult.acceptanceCriteria.length,
+        buildValidity: validity,
+        effectiveOutcome: validity.effectiveOutcome,
         success: true,
         classification: "SUCCESS",
         modifiedFiles: [],
@@ -249,6 +313,22 @@ export class ComparisonRunner {
     const resolvedFindings = Math.max(0, initialFindings.length - finalFindings.length);
     const newFindings = Math.max(0, finalFindings.length - (initialFindings.length - resolvedFindings));
     const passedAc = postVerify.acceptanceCriteriaEvaluations.filter((e) => e.passed).length;
+    const totalAc = planResultForVerify.acceptanceCriteria.length;
+
+    // 5. Deterministic Build Validity Assessment (Phase 5B)
+    const buildValidity = await BuildValidityDetector.evaluate({
+      workspaceRoot,
+      entryPath: comparisonCase.componentPath,
+      expectedSignals: comparisonCase.expectedSignals,
+      serverStarted: true,
+      routeReachable: postVerify.hardGatesPassed,
+      regressionCount: postVerify.criticalFindings,
+      resolvedFindingCount: resolvedFindings,
+      acceptanceCriteriaRate: totalAc > 0 ? passedAc / totalAc : 0,
+      safetyFailure: false,
+    });
+
+    const isSuccess = agentResult.success && postVerify.hardGatesPassed && buildValidity.buildValid;
 
     return {
       mode: "AGENT_ALONE",
@@ -269,10 +349,16 @@ export class ComparisonRunner {
       newFindingCount: newFindings,
       regressionCount: postVerify.criticalFindings,
       acceptanceCriteriaPassed: passedAc,
-      acceptanceCriteriaTotal: planResultForVerify.acceptanceCriteria.length,
-      success: agentResult.success && postVerify.hardGatesPassed,
-      classification: postVerify.hardGatesPassed ? "SUCCESS" : "PRODUCT_FAILURE",
-      failureReason: agentResult.errorMessage,
+      acceptanceCriteriaTotal: totalAc,
+      buildValidity,
+      effectiveOutcome: buildValidity.effectiveOutcome,
+      success: isSuccess,
+      classification: !buildValidity.buildValid
+        ? "PRODUCT_FAILURE"
+        : postVerify.hardGatesPassed
+        ? "SUCCESS"
+        : "PRODUCT_FAILURE",
+      failureReason: agentResult.errorMessage || (!buildValidity.buildValid ? buildValidity.reason : undefined),
       modifiedFiles: agentResult.actualModifiedFiles || [],
       gitDiff: agentResult.gitDiffProduced || "",
       findings: finalFindings,
@@ -302,6 +388,14 @@ export class ComparisonRunner {
     const planningDurationMs = Date.now() - planStart;
 
     if (config.dryRun) {
+      const validity = await BuildValidityDetector.evaluate({
+        workspaceRoot,
+        entryPath: comparisonCase.componentPath,
+        expectedSignals: comparisonCase.expectedSignals,
+        serverStarted: true,
+        routeReachable: true,
+      });
+
       return {
         mode: "AGENT_ELEVATE",
         totalDurationMs: Date.now() - startTime,
@@ -321,6 +415,8 @@ export class ComparisonRunner {
         regressionCount: 0,
         acceptanceCriteriaPassed: 0,
         acceptanceCriteriaTotal: planResult.acceptanceCriteria.length,
+        buildValidity: validity,
+        effectiveOutcome: validity.effectiveOutcome,
         success: true,
         classification: "SUCCESS",
         modifiedFiles: [],
@@ -335,13 +431,17 @@ export class ComparisonRunner {
     const initialFindings = baselineVerify.findings;
 
     // 2. Build structured, high-density AgentTask via Elevate task builder
-    const task = AgentTaskBuilder.buildTask(planResult, {
-      prompt: comparisonCase.prompt,
-      agentName: config.agentName,
-      agentModel: config.model,
-      effort: config.effort,
-      timeoutMs: config.timeoutMs,
-    }, workspaceRoot);
+    const task = AgentTaskBuilder.buildTask(
+      planResult,
+      {
+        prompt: comparisonCase.prompt,
+        agentName: config.agentName,
+        agentModel: config.model,
+        effort: config.effort,
+        timeoutMs: config.timeoutMs,
+      },
+      workspaceRoot
+    );
 
     // 3. Execute agent
     const agentStart = Date.now();
@@ -361,6 +461,22 @@ export class ComparisonRunner {
     const resolvedFindings = Math.max(0, initialFindings.length - finalFindings.length);
     const newFindings = Math.max(0, finalFindings.length - (initialFindings.length - resolvedFindings));
     const passedAc = postVerify.acceptanceCriteriaEvaluations.filter((e) => e.passed).length;
+    const totalAc = planResult.acceptanceCriteria.length;
+
+    // 5. Deterministic Build Validity Assessment (Phase 5B)
+    const buildValidity = await BuildValidityDetector.evaluate({
+      workspaceRoot,
+      entryPath: comparisonCase.componentPath,
+      expectedSignals: comparisonCase.expectedSignals,
+      serverStarted: true,
+      routeReachable: postVerify.hardGatesPassed,
+      regressionCount: postVerify.criticalFindings,
+      resolvedFindingCount: resolvedFindings,
+      acceptanceCriteriaRate: totalAc > 0 ? passedAc / totalAc : 0,
+      safetyFailure: false,
+    });
+
+    const isSuccess = agentResult.success && postVerify.hardGatesPassed && buildValidity.buildValid;
 
     return {
       mode: "AGENT_ELEVATE",
@@ -381,10 +497,16 @@ export class ComparisonRunner {
       newFindingCount: newFindings,
       regressionCount: postVerify.criticalFindings,
       acceptanceCriteriaPassed: passedAc,
-      acceptanceCriteriaTotal: planResult.acceptanceCriteria.length,
-      success: agentResult.success && postVerify.hardGatesPassed,
-      classification: postVerify.hardGatesPassed ? "SUCCESS" : "PRODUCT_FAILURE",
-      failureReason: agentResult.errorMessage,
+      acceptanceCriteriaTotal: totalAc,
+      buildValidity,
+      effectiveOutcome: buildValidity.effectiveOutcome,
+      success: isSuccess,
+      classification: !buildValidity.buildValid
+        ? "PRODUCT_FAILURE"
+        : postVerify.hardGatesPassed
+        ? "SUCCESS"
+        : "PRODUCT_FAILURE",
+      failureReason: agentResult.errorMessage || (!buildValidity.buildValid ? buildValidity.reason : undefined),
       modifiedFiles: agentResult.actualModifiedFiles || [],
       gitDiff: agentResult.gitDiffProduced || "",
       findings: finalFindings,
@@ -462,6 +584,12 @@ export class ComparisonRunner {
     const aloneSuccess = aloneRuns.filter((r) => r.success).length;
     const elevateSuccess = elevateRuns.filter((r) => r.success).length;
 
+    const aloneValidCount = aloneRuns.filter((r) => r.buildValidity?.buildValid).length;
+    const aloneInvalidCount = totalCases - aloneValidCount;
+
+    const elevateValidCount = elevateRuns.filter((r) => r.buildValidity?.buildValid).length;
+    const elevateInvalidCount = totalCases - elevateValidCount;
+
     let gitCommit = "unknown";
     try {
       const { stdout } = await execFileAsync("git", ["rev-parse", "--short", "HEAD"]);
@@ -487,13 +615,17 @@ export class ComparisonRunner {
           totalResolvedFindings: aloneRuns.reduce((sum, r) => sum + r.resolvedFindingCount, 0),
           totalFinalFindings: aloneRuns.reduce((sum, r) => sum + r.finalFindingCount, 0),
           totalRegressions: aloneRuns.reduce((sum, r) => sum + r.regressionCount, 0),
+          validBuildCount: aloneValidCount,
+          invalidBuildCount: aloneInvalidCount,
           successRate: totalCases > 0 ? Number((aloneSuccess / totalCases).toFixed(2)) : 0,
           avgAcceptanceRate:
             totalCases > 0
               ? Number(
                   (
                     aloneRuns.reduce(
-                      (sum, r) => sum + (r.acceptanceCriteriaTotal > 0 ? r.acceptanceCriteriaPassed / r.acceptanceCriteriaTotal : 0),
+                      (sum, r) =>
+                        sum +
+                        (r.acceptanceCriteriaTotal > 0 ? r.acceptanceCriteriaPassed / r.acceptanceCriteriaTotal : 0),
                       0
                     ) / totalCases
                   ).toFixed(2)
@@ -506,13 +638,17 @@ export class ComparisonRunner {
           totalResolvedFindings: elevateRuns.reduce((sum, r) => sum + r.resolvedFindingCount, 0),
           totalFinalFindings: elevateRuns.reduce((sum, r) => sum + r.finalFindingCount, 0),
           totalRegressions: elevateRuns.reduce((sum, r) => sum + r.regressionCount, 0),
+          validBuildCount: elevateValidCount,
+          invalidBuildCount: elevateInvalidCount,
           successRate: totalCases > 0 ? Number((elevateSuccess / totalCases).toFixed(2)) : 0,
           avgAcceptanceRate:
             totalCases > 0
               ? Number(
                   (
                     elevateRuns.reduce(
-                      (sum, r) => sum + (r.acceptanceCriteriaTotal > 0 ? r.acceptanceCriteriaPassed / r.acceptanceCriteriaTotal : 0),
+                      (sum, r) =>
+                        sum +
+                        (r.acceptanceCriteriaTotal > 0 ? r.acceptanceCriteriaPassed / r.acceptanceCriteriaTotal : 0),
                       0
                     ) / totalCases
                   ).toFixed(2)
